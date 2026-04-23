@@ -17,6 +17,15 @@ class _LoginPageState extends State<LoginPage> {
   bool isLoading = false;
 
   Future<void> login() async {
+    // 🔥 VALIDASI INPUT KOSONG
+    if (emailController.text.trim().isEmpty ||
+        passwordController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Email & password tidak boleh kosong")),
+      );
+      return;
+    }
+
     setState(() => isLoading = true);
 
     try {
@@ -25,15 +34,11 @@ class _LoginPageState extends State<LoginPage> {
         password: passwordController.text.trim(),
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Login Berhasil")),
+      // 🔥 LOGIN SUKSES → PINDAH KE HOME
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomePage()),
       );
-
-      // OPTIONAL: pindah halaman kalau login sukses
-      // Navigator.pushReplacement(
-      //   context,
-      //   MaterialPageRoute(builder: (_) => const HomePage()),
-      // );
 
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -64,6 +69,7 @@ class _LoginPageState extends State<LoginPage> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
+            // 📧 EMAIL
             TextField(
               controller: emailController,
               decoration: const InputDecoration(
@@ -74,6 +80,7 @@ class _LoginPageState extends State<LoginPage> {
 
             const SizedBox(height: 12),
 
+            // 🔒 PASSWORD
             TextField(
               controller: passwordController,
               obscureText: true,
@@ -85,17 +92,12 @@ class _LoginPageState extends State<LoginPage> {
 
             const SizedBox(height: 20),
 
+            // 🔥 BUTTON LOGIN
             SizedBox(
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: isLoading ? null : () async {
-                  await login();
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const HomePage()),
-                  );
-                },
+                onPressed: isLoading ? null : login,
                 child: isLoading
                     ? const CircularProgressIndicator(
                         color: Colors.white,
@@ -104,15 +106,21 @@ class _LoginPageState extends State<LoginPage> {
                     : const Text("Login"),
               ),
             ),
+
+            const SizedBox(height: 10),
+
+            // 🔗 KE REGISTER
             TextButton(
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const RegisterPage()),
+                  MaterialPageRoute(
+                    builder: (_) => const RegisterPage(),
+                  ),
                 );
               },
               child: const Text("Belum punya akun? Daftar"),
-            )
+            ),
           ],
         ),
       ),
