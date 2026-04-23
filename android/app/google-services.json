@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "953173587826",
+    "project_id": "wadul-guse-b7758",
+    "storage_bucket": "wadul-guse-b7758.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:953173587826:android:5a62c64d08ed808c400feb",
+        "android_client_info": {
+          "package_name": "com.example.project_pbm"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDB3b0Z5ydDg9y7K31CR0zu5V24a-N7k-s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
