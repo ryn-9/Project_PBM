@@ -23,8 +23,29 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: const LoginPage(),
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      initialRoute: '/',
+      routes: {
+        '/': (context) => SplashScreen(),   // tampil dulu
+        '/login': (context) => LoginPage(), // pindah ke login
+      },
     );
   }
-} 
+}
+
+class SplashScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    Future.delayed(const Duration(seconds: 3), () {
+      Navigator.pushReplacementNamed(context, '/login');
+    });
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFE7378D),
+      body: Center(
+        child: Image.asset('assets/images/splash.png', width: 150),
+      ),
+    );
+  }
+}
