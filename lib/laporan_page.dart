@@ -82,7 +82,7 @@ class _LaporanPageState extends State<LaporanPage> {
         'deskripsi': descController.text,
         'lokasi': lokasi,
         'isPublic': isPublic,
-        'status': 'Menunggu',
+        'status': 'Selesai',
         'imageUrl': imageUrl,
         'createdAt': Timestamp.now(),
       });
