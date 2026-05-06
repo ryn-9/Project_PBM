@@ -13,34 +13,33 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int currentIndex = 0;
-
   final user = FirebaseAuth.instance.currentUser;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Dashboard"),
+        backgroundColor: const Color(0xFFE7378D),
+        title: const Text("Beranda"),
         actions: [
           IconButton(
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
-
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(builder: (context) => const LoginPage()),
                 (route) => false,
               );
             },
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout, color: Colors.white),
           )
         ],
       ),
-
       body: _buildBody(),
-
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
+        selectedItemColor: const Color(0xFFE7378D),
         onTap: (index) {
           setState(() {
             currentIndex = index;
@@ -49,7 +48,7 @@ class _HomePageState extends State<HomePage> {
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
-            label: "Home",
+            label: "Beranda",
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.report),
@@ -57,7 +56,7 @@ class _HomePageState extends State<HomePage> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
-            label: "Profile",
+            label: "Profil",
           ),
         ],
       ),
@@ -67,7 +66,7 @@ class _HomePageState extends State<HomePage> {
   Widget _buildBody() {
     switch (currentIndex) {
       case 0:
-        return _homeContent();
+        return _dashboardContent();
       case 1:
         return const LaporanPage();
       case 2:
@@ -77,26 +76,97 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Widget _homeContent() {
+  Widget _dashboardContent() {
     return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance
-          .collection('users')
-          .doc(user!.uid)
-          .get(),
+      future: FirebaseFirestore.instance.collection('users').doc(user!.uid).get(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
 
         var data = snapshot.data!;
+        String username = data['username'] ?? 'User';
 
-        return Center(
-          child: Text(
-            "Halo, ${data['username'] ?? 'User'}",
-            style: const TextStyle(fontSize: 20),
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Hai, $username",
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Card Statistik
+              _statCard("Laporan yang perlu ditindaklanjuti", "120"),
+              const SizedBox(height: 12),
+              _statCard("Laporan yang sedang dalam proses ditindaklanjuti", "130"),
+              const SizedBox(height: 12),
+              _statCard("Laporan yang sudah ditindaklanjuti", "60"),
+              const SizedBox(height: 20),
+
+              // Tombol Daftar Laporan
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE7378D),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LaporanPage()),
+                    );
+                  },
+                  child: const Text(
+                    "Daftar Laporan",
+                    style: TextStyle(fontSize: 18, color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
           ),
         );
       },
+    );
+  }
+
+  Widget _statCard(String title, String value) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFDE4EC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE7378D)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(fontSize: 16, color: Colors.black87),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFFE7378D),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
