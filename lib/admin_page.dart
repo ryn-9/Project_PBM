@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login_page.dart';
-import 'laporan_page.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+
+class AdminHomePage extends StatefulWidget {
+  const AdminHomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<AdminHomePage> createState() => _AdminHomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _AdminHomePageState extends State<AdminHomePage> {
   int currentIndex = 0;
   final user = FirebaseAuth.instance.currentUser;
 
@@ -68,7 +68,7 @@ class _HomePageState extends State<HomePage> {
       case 0:
         return _dashboardContent();
       case 1:
-        return const LaporanPage();
+        return const Placeholder();
       case 2:
         return const Center(child: Text("Halaman Profil"));
       default:
@@ -124,7 +124,7 @@ class _HomePageState extends State<HomePage> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const LaporanPage()),
+                      MaterialPageRoute(builder: (_) => const Placeholder()),
                     );
                   },
                   child: const Text(

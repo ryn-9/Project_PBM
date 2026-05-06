@@ -36,6 +36,7 @@ class _RegisterPageState extends State<RegisterPage> {
         'username': usernameController.text.trim(),
         'email': emailController.text.trim(),
         'uid': uid,
+        'role': 'user',
         'createdAt': Timestamp.now(),
       });
 

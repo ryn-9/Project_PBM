@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'service/uploadfotoService.dart';
 
 class LaporanPage extends StatefulWidget {
   const LaporanPage({super.key});
@@ -19,6 +20,7 @@ class _LaporanPageState extends State<LaporanPage> {
   String? lokasi;
   bool isPublic = true;
   bool isLoading = false;
+  String? status;
 
   final picker = ImagePicker();
 
@@ -70,11 +72,18 @@ class _LaporanPageState extends State<LaporanPage> {
     try {
       final user = FirebaseAuth.instance.currentUser;
 
+      String? imageUrl;
+        if (imageFile != null) {
+          imageUrl = await ImageKitService.uploadImage(imageFile!);
+        }
+
       await FirebaseFirestore.instance.collection('laporan').add({
         'userId': user!.uid,
         'deskripsi': descController.text,
         'lokasi': lokasi,
         'isPublic': isPublic,
+        'status': 'Menunggu',
+        'imageUrl': imageUrl,
         'createdAt': Timestamp.now(),
       });
 

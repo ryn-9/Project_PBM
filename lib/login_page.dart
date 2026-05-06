@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'register_page.dart';
-import 'home_page.dart';
+import 'user_page.dart';
+import 'admin_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -28,15 +30,36 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => isLoading = true);
 
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      UserCredential userCredential =
+          await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomePage()),
-      );
+      String uid = userCredential.user!.uid;
+
+      // 🔥 Ambil data dari Firestore
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+
+      // 🔐 Ambil role (default user kalau kosong)
+      String role = doc.data()?['role'] ?? 'user';
+
+      // 🚀 Redirect sesuai role
+      if (role == 'admin') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const AdminHomePage()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const UserHomePage()),
+        );
+      }
+
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message ?? "Login gagal")),
@@ -119,7 +142,6 @@ class _LoginPageState extends State<LoginPage> {
                     controller: emailController,
                     decoration: InputDecoration(
                       labelText: "Email",
-                      // labelStyle: const TextStyle(color: Colors.grey),
                       enabledBorder: OutlineInputBorder(
                         borderSide: const BorderSide(color: Colors.grey),
                         borderRadius: BorderRadius.circular(12),
@@ -156,11 +178,9 @@ class _LoginPageState extends State<LoginPage> {
                     child: TextButton(
                       style: TextButton.styleFrom(
                         foregroundColor: const Color(0xFFE7378D),
-                        overlayColor: Colors.transparent, // hilangkan ripple/hover
+                        overlayColor: Colors.transparent,
                       ),
-                      onPressed: () {
-                        // TODO: forgot password logic
-                      },
+                      onPressed: () {},
                       child: const Text(
                         "Lupa Password",
                         style: TextStyle(
@@ -203,7 +223,7 @@ class _LoginPageState extends State<LoginPage> {
                   TextButton(
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFFE7378D),
-                      overlayColor: Colors.transparent, // hilangkan ripple/hover
+                      overlayColor: Colors.transparent,
                     ),
                     onPressed: () {
                       Navigator.push(
