@@ -131,83 +131,97 @@ class _UserHomePageState extends State<UserHomePage> {
 }
 
   Widget _dashboardContent() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('laporan')
-          .where('jenis', isEqualTo: 'public')
-          .orderBy('createdAt', descending: true)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+  return StreamBuilder<QuerySnapshot>(
+    stream: FirebaseFirestore.instance
+        .collection('laporan')
+        .where('isPublic', isEqualTo: true)
+        .orderBy('createdAt', descending: true)
+        .snapshots(),
+    builder: (context, snapshot) {
+      // 🔥 DEBUG TAMBAHAN
+      print("STATE: ${snapshot.connectionState}");
+      print("ERROR: ${snapshot.error}");
+      print("HAS DATA: ${snapshot.hasData}");
+      print("JUMLAH DATA: ${snapshot.data?.docs.length}");
 
-        if (snapshot.hasError) {
-          return Center(child: Text("Error: ${snapshot.error}"));
-        }
-
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(child: Text("Belum ada laporan"));
-        }
-
-        var docs = snapshot.data!.docs;
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(12),
-          itemCount: docs.length,
-          itemBuilder: (context, index) {
-            var data = docs[index];
-
-            return Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: ListTile(
-                leading: data['imageUrl'] != null &&
-                        data['imageUrl'] != ""
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          data['imageUrl'],
-                          width: 60,
-                          height: 60,
-                          fit: BoxFit.cover,
-                        ),
-                      )
-                    : const Icon(Icons.image),
-
-                title: Text(data['deskripsi'] ?? '-'),
-
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(data['lokasi'] ?? '-'),
-                    const SizedBox(height: 4),
-
-                    Text(
-                      data['status'] ?? '-',
-                      style: const TextStyle(color: Colors.green),
-                    ),
-
-                    const SizedBox(height: 4),
-
-                    const Text(
-                      "PUBLIC",
-                      style: TextStyle(
-                        color: Colors.blue,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+      // ❗ ERROR DI ATAS (FIX PENTING)
+      if (snapshot.hasError) {
+        return Center(
+          child: Text("Error Firestore: ${snapshot.error}"),
         );
-      },
-    );
-  }
+      }
+
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Center(child: CircularProgressIndicator());
+      }
+
+      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        return const Center(child: Text("Belum ada laporan"));
+      }
+
+      var docs = snapshot.data!.docs;
+
+      // 🔥 DEBUG ISI DATA
+      for (var doc in docs) {
+        print("ISI DOC: ${doc.data()}");
+      }
+
+      return ListView.builder(
+        padding: const EdgeInsets.all(12),
+        itemCount: docs.length,
+        itemBuilder: (context, index) {
+          var data = docs[index];
+
+          return Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: ListTile(
+              leading: data['imageUrl'] != null &&
+                      data['imageUrl'] != ""
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        data['imageUrl'],
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.cover,
+                      ),
+                    )
+                  : const Icon(Icons.image),
+
+              title: Text(data['deskripsi'] ?? '-'),
+
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(data['lokasi'] ?? '-'),
+                  const SizedBox(height: 4),
+
+                  Text(
+                    data['status'] ?? '-',
+                    style: const TextStyle(color: Colors.green),
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  const Text(
+                    "PUBLIC",
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+}
 
   Widget _statCard(String title, String value) {
     return Container(
