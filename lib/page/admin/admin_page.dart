@@ -80,12 +80,29 @@ class _AdminHomePageState extends State<AdminHomePage> {
     return FutureBuilder<DocumentSnapshot>(
       future: FirebaseFirestore.instance.collection('users').doc(user!.uid).get(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+        // ⏳ Loading
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
+        // ❌ Error
+        if (snapshot.hasError) {
+          return Center(child: Text("Error: ${snapshot.error}"));
+        }
+
+        // 📂 Data tidak ada
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return const Center(child: Text("Data user tidak ditemukan"));
+        }
+
+        // ✅ Data ada
         var data = snapshot.data!;
         String username = data['username'] ?? 'User';
+        String role = data['role'] ?? 'user';
+
+        if (role != 'admin') {
+          return const Center(child: Text("Akses ditolak, bukan admin"));
+        }
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
