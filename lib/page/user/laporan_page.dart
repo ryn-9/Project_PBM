@@ -4,7 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'service/uploadfotoService.dart';
+import '../../service/uploadfotoService.dart';
 
 class LaporanPage extends StatefulWidget {
   const LaporanPage({super.key});
@@ -24,7 +24,6 @@ class _LaporanPageState extends State<LaporanPage> {
 
   final picker = ImagePicker();
 
-  // 📷 Ambil dari kamera
   Future<void> pickCamera() async {
     final picked = await picker.pickImage(source: ImageSource.camera);
     if (picked != null) {
@@ -34,7 +33,6 @@ class _LaporanPageState extends State<LaporanPage> {
     }
   }
 
-  // 🖼️ Ambil dari gallery
   Future<void> pickGallery() async {
     final picked = await picker.pickImage(source: ImageSource.gallery);
     if (picked != null) {
@@ -44,7 +42,6 @@ class _LaporanPageState extends State<LaporanPage> {
     }
   }
 
-  // 📍 Ambil lokasi
   Future<void> getLocation() async {
     LocationPermission permission = await Geolocator.requestPermission();
 
@@ -58,7 +55,7 @@ class _LaporanPageState extends State<LaporanPage> {
     });
   }
 
-  // 💾 Simpan laporan
+  // Simpan laporan
   Future<void> submitLaporan() async {
     if (descController.text.isEmpty || lokasi == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -115,7 +112,6 @@ class _LaporanPageState extends State<LaporanPage> {
 
           const SizedBox(height: 16),
 
-          // 📷 Preview gambar
           if (imageFile != null)
             Image.file(imageFile!, height: 150),
 
@@ -135,7 +131,7 @@ class _LaporanPageState extends State<LaporanPage> {
 
           const SizedBox(height: 16),
 
-          // 📝 Deskripsi
+          //Deskripsi
           TextField(
             controller: descController,
             maxLines: 3,
@@ -147,7 +143,7 @@ class _LaporanPageState extends State<LaporanPage> {
 
           const SizedBox(height: 16),
 
-          // 📍 Lokasi
+          // Lokasi
           Row(
             children: [
               ElevatedButton(
@@ -163,7 +159,7 @@ class _LaporanPageState extends State<LaporanPage> {
 
           const SizedBox(height: 16),
 
-          // 🔒 Public / Private
+          //Public / Private
           SwitchListTile(
             title: const Text("Publik"),
             value: isPublic,
@@ -176,7 +172,7 @@ class _LaporanPageState extends State<LaporanPage> {
 
           const SizedBox(height: 16),
 
-          // 🚀 Submit
+          //Submit
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(

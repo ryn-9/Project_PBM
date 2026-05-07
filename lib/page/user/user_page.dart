@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:project_pbm/riwayat_user.dart';
-import 'login_page.dart';
+import 'package:project_pbm/page/user/riwayat_user.dart';
+import '../auth/login_page.dart';
 import 'laporan_page.dart';
 
 class UserHomePage extends StatefulWidget {
@@ -131,62 +131,79 @@ class _UserHomePageState extends State<UserHomePage> {
 }
 
   Widget _dashboardContent() {
-    return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance.collection('users').doc(user!.uid).get(),
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('laporan')
+          .where('jenis', isEqualTo: 'public')
+          .orderBy('createdAt', descending: true)
+          .snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        var data = snapshot.data!;
-        String username = data['username'] ?? 'User';
+        if (snapshot.hasError) {
+          return Center(child: Text("Error: ${snapshot.error}"));
+        }
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Hai, $username!",
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text("Belum ada laporan"));
+        }
+
+        var docs = snapshot.data!.docs;
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(12),
+          itemCount: docs.length,
+          itemBuilder: (context, index) {
+            var data = docs[index];
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              const SizedBox(height: 20),
+              child: ListTile(
+                leading: data['imageUrl'] != null &&
+                        data['imageUrl'] != ""
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          data['imageUrl'],
+                          width: 60,
+                          height: 60,
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    : const Icon(Icons.image),
 
-              _statCard("Laporan yang perlu ditindaklanjuti", "120"),
-              const SizedBox(height: 12),
-              _statCard("Laporan yang sedang dalam proses ditindaklanjuti", "130"),
-              const SizedBox(height: 12),
-              _statCard("Laporan yang sudah ditindaklanjuti", "60"),
-              const SizedBox(height: 20),
+                title: Text(data['deskripsi'] ?? '-'),
 
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE7378D),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(data['lokasi'] ?? '-'),
+                    const SizedBox(height: 4),
+
+                    Text(
+                      data['status'] ?? '-',
+                      style: const TextStyle(color: Colors.green),
                     ),
-                  ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const Placeholder()),
-                    );
-                  },
-                  child: const Text(
-                    "Daftar Laporan",
-                    style: TextStyle(fontSize: 18, color: Colors.white),
-                  ),
+
+                    const SizedBox(height: 4),
+
+                    const Text(
+                      "PUBLIC",
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
