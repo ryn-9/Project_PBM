@@ -10,11 +10,9 @@ class LaporanAdminPage extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('laporan')
-            // .where('isPublic', isEqualTo: true)
             .orderBy('createdAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
-          // DEBUG
           print("STATE: ${snapshot.connectionState}");
           print("ERROR: ${snapshot.error}");
           print("JUMLAH DATA: ${snapshot.data?.docs.length}");
@@ -33,14 +31,7 @@ class LaporanAdminPage extends StatelessWidget {
             return const Center(child: Text("Belum ada laporan"));
           }
 
-          var docs = snapshot.data!.docs.where((doc) {
-            var data = doc.data() as Map<String, dynamic>;
-            return data['status'] != 'Selesai';
-          }).toList();
-
-          if (docs.isEmpty) {
-            return const Center(child: Text("Tidak ada laporan aktif"));
-          }
+          var docs = snapshot.data!.docs;
 
           return ListView.builder(
             padding: const EdgeInsets.all(12),
@@ -50,6 +41,22 @@ class LaporanAdminPage extends StatelessWidget {
               var data = doc.data() as Map<String, dynamic>;
 
               String currentStatus = data['status'] ?? 'Terkirim';
+
+              // 🎨 WARNA STATUS
+              Color statusColor;
+              switch (currentStatus) {
+                case 'Selesai':
+                  statusColor = Colors.green;
+                  break;
+                case 'Proses':
+                  statusColor = Colors.orange;
+                  break;
+                case 'Dibaca':
+                  statusColor = Colors.blue;
+                  break;
+                default:
+                  statusColor = Colors.grey;
+              }
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -61,7 +68,7 @@ class LaporanAdminPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // DATA LAPORAN
+                      //DATA LAPORAN
                       ListTile(
                         contentPadding: EdgeInsets.zero,
                         leading: data['imageUrl'] != null &&
@@ -92,10 +99,22 @@ class LaporanAdminPage extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            "Status:",
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                          Row(
+                            children: [
+                              const Text(
+                                "Status: ",
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                currentStatus,
+                                style: TextStyle(
+                                  color: statusColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
+
                           DropdownButton<String>(
                             value: currentStatus,
                             items: const [
@@ -113,33 +132,37 @@ class LaporanAdminPage extends StatelessWidget {
                                   child: Text('Selesai')),
                             ],
                             onChanged: (value) async {
-                                if (value == null) return;
+                              if (value == null) return;
 
-                                try {
-                                  await FirebaseFirestore.instance
-                                      .collection('laporan')
-                                      .doc(doc.id)
-                                      .update({
-                                    'status': value,
-                                  });
+                              try {
+                                // simpan messenger sebelum async
+                                final messenger =
+                                    ScaffoldMessenger.of(context);
 
-                                  if (!context.mounted) return;
+                                await FirebaseFirestore.instance
+                                    .collection('laporan')
+                                    .doc(doc.id)
+                                    .update({
+                                  'status': value,
+                                });
 
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text("Status berhasil diubah ke $value"),
-                                    ),
-                                  );
-                                } catch (e) {
-                                  if (!context.mounted) return;
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                        "Status berhasil diubah ke $value"),
+                                  ),
+                                );
+                              } catch (e) {
+                                final messenger =
+                                    ScaffoldMessenger.of(context);
 
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text("Error: $e"),
-                                    ),
-                                  );
-                                }
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text("Error: $e"),
+                                  ),
+                                );
                               }
+                            },
                           ),
                         ],
                       ),
