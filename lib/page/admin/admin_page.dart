@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:project_pbm/page/admin/laporan_admin_page.dart';
 import '../auth/login_page.dart';
 
 
@@ -68,7 +69,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
       case 0:
         return _dashboardContent();
       case 1:
-        return const Placeholder();
+        return LaporanAdminPage();
       case 2:
         return const Center(child: Text("Halaman Profil"));
       default:
