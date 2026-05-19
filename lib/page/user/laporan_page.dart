@@ -5,6 +5,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../service/uploadfotoService.dart';
+import 'package:camera/camera.dart';
+import 'camera_capture_page.dart'; 
 
 class LaporanPage extends StatefulWidget {
   const LaporanPage({super.key});
@@ -25,22 +27,25 @@ class _LaporanPageState extends State<LaporanPage> {
   final picker = ImagePicker();
 
   Future<void> pickCamera() async {
-    final picked = await picker.pickImage(source: ImageSource.camera);
-    if (picked != null) {
-      setState(() {
-        imageFile = File(picked.path);
-      });
+    try {
+      // Membuka halaman preview kamera
+      final imagePath = await Navigator.push<String>(
+        context,
+        MaterialPageRoute(builder: (context) => const CameraCapturePage()),
+      );
+
+      if (imagePath != null) {
+        setState(() {
+          imageFile = File(imagePath);
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal mengambil foto: $e')),
+      );
     }
   }
 
-  Future<void> pickGallery() async {
-    final picked = await picker.pickImage(source: ImageSource.gallery);
-    if (picked != null) {
-      setState(() {
-        imageFile = File(picked.path);
-      });
-    }
-  }
 
   Future<void> getLocation() async {
     LocationPermission permission = await Geolocator.requestPermission();
@@ -120,11 +125,6 @@ class _LaporanPageState extends State<LaporanPage> {
               ElevatedButton(
                 onPressed: pickCamera,
                 child: const Text("Camera"),
-              ),
-              const SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: pickGallery,
-                child: const Text("Gallery"),
               ),
             ],
           ),
