@@ -5,6 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../service/uploadfotoService.dart';
 import 'camera_capture_page.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 class LaporanPage extends StatefulWidget {
   const LaporanPage({super.key});
@@ -18,6 +20,8 @@ class _LaporanPageState extends State<LaporanPage> {
 
   File? imageFile;
   String? lokasi;
+  LatLng? _currentLatLng;
+  Marker? _marker;
   bool isPublic = true;
   bool isLoading = false;
 
@@ -38,10 +42,21 @@ class _LaporanPageState extends State<LaporanPage> {
     LocationPermission permission = await Geolocator.requestPermission();
     if (permission == LocationPermission.denied) return;
 
-    Position pos =
-        await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    Position pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
 
     setState(() {
+      _currentLatLng = LatLng(pos.latitude, pos.longitude);
+      _marker = _marker = Marker(
+        point: _currentLatLng!,
+        width: 40,
+        height: 40,
+        child: const Icon(
+          Icons.location_on,
+          color: Colors.red,
+          size: 40,
+        ),
+      );
       lokasi = "${pos.latitude}, ${pos.longitude}";
     });
   }
@@ -127,6 +142,26 @@ class _LaporanPageState extends State<LaporanPage> {
                 child: Text(lokasi ?? "Belum ada lokasi"),
               ),
             ],
+          ),
+          Container(
+            height: 300,
+            child: _currentLatLng == null
+                ? const Center(child: Text("Belum ada lokasi"))
+                : FlutterMap(
+                  options: MapOptions(
+                    initialCenter: _currentLatLng!,
+                    initialZoom: 15.0,
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                      userAgentPackageName: 'com.example.project_pbm',
+                    ),
+                    MarkerLayer(
+                      markers: _marker != null ? [_marker!] : [],
+                    ),
+                  ],
+                )
           ),
           const SizedBox(height: 16),
           SwitchListTile(
