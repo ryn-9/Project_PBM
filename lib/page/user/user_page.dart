@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:project_pbm/page/user/profil_page.dart';
-import '../../service/authService.dart';
-import '../../service/laporanService.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:project_pbm/page/user/riwayat_user.dart';
 import '../auth/login_page.dart';
 import 'laporan_page.dart';
-import 'riwayat_user.dart';
 
 class UserHomePage extends StatefulWidget {
   const UserHomePage({super.key});
@@ -15,57 +14,12 @@ class UserHomePage extends StatefulWidget {
 
 class _UserHomePageState extends State<UserHomePage> {
   int currentIndex = 0;
-  String namaUser = "User";
-
-  @override
-  void initState() {
-    super.initState();
-    loadUser();
-  }
-
-  Future<void> loadUser() async {
-    try {
-      final profile = await AuthService.getProfile();
-
-      if (!mounted) return;
-
-      setState(() {
-        namaUser = profile["nama"] ?? "User";
-      });
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        namaUser = "User";
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            e.toString().replaceAll("Exception: ", ""),
-          ),
-        ),
-      );
-    }
-  }
-
-  Future<void> logout() async {
-    await AuthService.logout();
-
-    if (!mounted) return;
-
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginPage()),
-      (route) => false,
-    );
-  }
+  final user = FirebaseAuth.instance.currentUser;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-
       appBar: AppBar(
         backgroundColor: const Color(0xFFE7378D),
         title: Text(
@@ -77,14 +31,19 @@ class _UserHomePageState extends State<UserHomePage> {
         ),
         actions: [
           IconButton(
-            onPressed: logout,
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => const LoginPage()),
+                (route) => false,
+              );
+            },
             icon: const Icon(Icons.logout, color: Colors.white),
-          ),
+          )
         ],
       ),
-
       body: _buildBody(),
-
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.only(top: 5),
         child: ClipRRect(
@@ -145,9 +104,9 @@ class _UserHomePageState extends State<UserHomePage> {
       case 2:
         return const Center(child: Text("Kamera"));
       case 3:
-        return const Center(child: Text("Ini riwayat ya"),);
+        return const RiwayatUserPage();
       case 4:
-        return const ProfilePage();
+        return const Center(child: Text("Halaman Profil"));
       default:
         return const Center(child: Text("Error"));
     }
@@ -171,151 +130,273 @@ class _UserHomePageState extends State<UserHomePage> {
   }
 
   Widget _dashboardContent() {
-    return FutureBuilder<List<dynamic>>(
-      future: LaporanService.getLaporanPublic(),
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('laporan')
+          .where('isPublic', isEqualTo: true)
+          .orderBy('createdAt', descending: true)
+          .snapshots(),
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(child: Text("Error Firestore: ${snapshot.error}"));
+        }
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-
-        if (snapshot.hasError) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                "Error: ${snapshot.error.toString().replaceAll("Exception: ", "")}",
-                textAlign: TextAlign.center,
-              ),
-            ),
-          );
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text("Belum ada laporan"));
         }
 
-        final laporanList = snapshot.data ?? [];
+        var docs = snapshot.data!.docs;
 
-        if (laporanList.isEmpty) {
-          return const Center(child: Text("Belum ada laporan publik"));
-        }
+        return ListView.builder(
+          padding: const EdgeInsets.all(12),
+          itemCount: docs.length,
+          itemBuilder: (context, index) {
+            var data = docs[index];
 
-        return RefreshIndicator(
-          onRefresh: () async {
-            setState(() {});
-          },
-          child: ListView(
-            padding: const EdgeInsets.all(12),
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Text(
-                  "Hai, $namaUser!",
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
+            final fotoProfil = (data.data() as Map<String, dynamic>)
+                    .containsKey('fotoProfil') &&
+                data['fotoProfil'] != ""
+                ? data['fotoProfil']
+                : null;
 
-              ...laporanList.map((item) {
-                final data = item as Map<String, dynamic>;
+            bool isLiked = false;
+            bool isDisliked = false;
 
-                final deskripsi = _getText(data, [
-                  "deskripsi",
-                  "description",
-                  "judul",
-                ]);
-
-                final lokasi = _getText(data, [
-                  "alamat",
-                  "lokasi",
-                  "location",
-                ]);
-
-                final status = _getText(data, [
-                  "status",
-                  "status_laporan",
-                ]);
-
-                final imageUrl = _getText(data, [
-                  "media",
-                  "imageUrl",
-                  "image_url",
-                  "foto",
-                  "foto_url",
-                ]);
-
+            return StatefulBuilder(
+              builder: (context, setStateCard) {
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
+                    side: const BorderSide(color: Colors.pink),
                   ),
-                  child: ListTile(
-                    leading: imageUrl.isNotEmpty
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              imageUrl,
-                              width: 60,
-                              height: 60,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Icon(Icons.broken_image);
-                              },
-                            ),
-                          )
-                        : const Icon(Icons.image_not_supported),
-                    title: Text(
-                      deskripsi.isNotEmpty ? deskripsi : "-",
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(lokasi.isNotEmpty ? lokasi : "-"),
-                        const SizedBox(height: 4),
-                        Text(
-                          status.isNotEmpty ? status : "-",
-                          style: const TextStyle(color: Colors.green),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ListTile(
+                        leading: fotoProfil != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  fotoProfil,
+                                  width: 50,
+                                  height: 50,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            : const Icon(Icons.person, size: 50),
+                        title: Text(
+                          data['deskripsi'] ?? '-',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        const SizedBox(height: 4),
-                        const Text(
+                        subtitle: Text(
+                          data['status'] ?? '-',
+                          style: TextStyle(
+                            color: (data['status'] ?? '-') == 'Selesai'
+                                ? Colors.green
+                                : Colors.pink,
+                          ),
+                        ),
+                      ),
+                      if (data['imageUrl'] != null && data['imageUrl'] != "")
+                        ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                              bottom: Radius.circular(12)),
+                          child: Image.network(
+                            data['imageUrl'],
+                            width: double.infinity,
+                            height: 180,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: Text(
                           "PUBLIC",
                           style: TextStyle(
                             color: Colors.blue,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            // Like
+                            InkWell(
+                              onTap: () {
+                                setStateCard(() {
+                                  isLiked = !isLiked;
+                                  if (isLiked) isDisliked = false;
+                                });
+                              },
+                              child: Row(
+                                children: [
+                                  Icon(Icons.thumb_up,
+                                      color:
+                                          isLiked ? Colors.blue : Colors.grey),
+                                  const SizedBox(width: 4),
+                                  const Text("Like"),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            // Dislike
+                            InkWell(
+                              onTap: () {
+                                setStateCard(() {
+                                  isDisliked = !isDisliked;
+                                  if (isDisliked) isLiked = false;
+                                });
+                              },
+                              child: Row(
+                                children: [
+                                  Icon(Icons.thumb_down,
+                                      color:
+                                          isDisliked ? Colors.red : Colors.grey),
+                                  const SizedBox(width: 4),
+                                  const Text("Dislike"),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            // Komentar
+                            InkWell(
+                              onTap: () {
+                                showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  shape: const RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.vertical(
+                                        top: Radius.circular(16)),
+                                  ),
+                                  builder: (context) {
+                                    TextEditingController commentController =
+                                        TextEditingController();
+                                    return Padding(
+                                      padding: EdgeInsets.only(
+                                          bottom: MediaQuery.of(context)
+                                              .viewInsets
+                                              .bottom),
+                                      child: SizedBox(
+                                        height: 400,
+                                        child: Column(
+                                          children: [
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.all(12.0),
+                                              child: Container(
+                                                width: 40,
+                                                height: 5,
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey[400],
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                              ),
+                                            ),
+                                            const Text(
+                                              "Komentar",
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 18),
+                                            ),
+                                            const Divider(),
+                                            Expanded(
+                                              child: ListView(
+                                                children: const [
+                                                  ListTile(
+                                                    leading: CircleAvatar(),
+                                                    title: Text("User1"),
+                                                    subtitle: Text(
+                                                        "Komentar pertama..."),
+                                                  ),
+                                                  ListTile(
+                                                    leading: CircleAvatar(),
+                                                    title: Text("User2"),
+                                                    subtitle: Text(
+                                                        "Komentar kedua..."),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.all(8.0),
+                                              child: Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: TextField(
+                                                      controller:
+                                                          commentController,
+                                                      decoration:
+                                                          const InputDecoration(
+                                                        hintText:
+                                                            "Tulis komentar...",
+                                                        border:
+                                                            OutlineInputBorder(
+                                                          borderRadius:
+                                                              BorderRadius.all(
+                                                                  Radius.circular(
+                                                                      20)),
+                                                        ),
+                                                        contentPadding:
+                                                            EdgeInsets.symmetric(
+                                                                horizontal: 12),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  IconButton(
+                                                    icon: const Icon(Icons.send,
+                                                        color: Colors.blue),
+                                                    onPressed: () {
+                                                      String comment =
+                                                          commentController.text
+                                                              .trim();
+                                                      if (comment.isNotEmpty) {
+                                                        print(
+                                                            "Komentar dikirim: $comment");
+                                                        commentController.clear();
+                                                        Navigator.pop(context);
+                                                      }
+                                                    },
+                                                  )
+                                                ],
+                                              ),
+                                            )
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                              child: Row(
+                                children: const [
+                                  Icon(Icons.comment, color: Colors.grey),
+                                  SizedBox(width: 4),
+                                  Text("Komentar"),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 );
-              }),
-            ],
-          ),
+              },
+            );
+          },
         );
       },
     );
-  }
-
-  Widget _profileContent() {
-    return Center(
-      child: Text(
-        "Halo, $namaUser",
-        style: const TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-
-  String _getText(Map<String, dynamic> data, List<String> keys) {
-    for (final key in keys) {
-      final value = data[key];
-      if (value != null && value.toString().isNotEmpty) {
-        return value.toString();
-      }
-    }
-    return "";
   }
 }
