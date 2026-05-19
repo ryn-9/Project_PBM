@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../service/authService.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -12,67 +11,87 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage> {
   final usernameController = TextEditingController();
   final emailController = TextEditingController();
+  final noHpController = TextEditingController();
   final passwordController = TextEditingController();
 
   bool isLoading = false;
 
   Future<void> register() async {
+    if (usernameController.text.trim().isEmpty ||
+        emailController.text.trim().isEmpty ||
+        passwordController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Nama, email, dan password wajib diisi"),
+        ),
+      );
+      return;
+    }
+
     setState(() => isLoading = true);
 
     try {
-      UserCredential userCredential =
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      await AuthService.register(
+        nama: usernameController.text.trim(),
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
+        noHp: noHpController.text.trim(),
       );
 
-      String uid = userCredential.user!.uid;
-
-      await userCredential.user!.updateDisplayName(
-        usernameController.text.trim(),
-      );
-
-      await FirebaseFirestore.instance.collection('users').doc(uid).set({
-        'username': usernameController.text.trim(),
-        'email': emailController.text.trim(),
-        'uid': uid,
-        'role': 'user',
-        'createdAt': Timestamp.now(),
-      });
+      if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Register berhasil")),
+        const SnackBar(content: Text("Register berhasil, silakan login")),
       );
 
       Navigator.pop(context);
-    } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? "Register gagal")),
-      );
     } catch (e) {
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
+        SnackBar(
+          content: Text(
+            e.toString().replaceAll("Exception: ", ""),
+          ),
+        ),
       );
     }
 
-    setState(() => isLoading = false);
+    if (mounted) {
+      setState(() => isLoading = false);
+    }
   }
 
   @override
   void dispose() {
     usernameController.dispose();
     emailController.dispose();
+    noHpController.dispose();
     passwordController.dispose();
     super.dispose();
+  }
+
+  InputDecoration inputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      enabledBorder: OutlineInputBorder(
+        borderSide: const BorderSide(color: Colors.grey),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderSide: const BorderSide(color: Color(0xFFE7378D)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Lingkaran gradient pink di background
           Positioned(
             top: -100,
             left: -100,
@@ -89,6 +108,7 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
             ),
           ),
+
           Positioned(
             bottom: -120,
             right: -120,
@@ -106,7 +126,6 @@ class _RegisterPageState extends State<RegisterPage> {
             ),
           ),
 
-          // Konten utama
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -121,63 +140,40 @@ class _RegisterPageState extends State<RegisterPage> {
                       color: Color(0xFFE7378D),
                     ),
                   ),
+
                   const SizedBox(height: 40),
 
-                  // USERNAME
                   TextField(
                     controller: usernameController,
-                    decoration: InputDecoration(
-                      labelText: "Username",
-                      // labelStyle: const TextStyle(color: Color(0xFFE7378D)),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: Color(0xFFE7378D)),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
+                    decoration: inputDecoration("Username"),
                   ),
+
                   const SizedBox(height: 20),
 
-                  // EMAIL
                   TextField(
                     controller: emailController,
-                    decoration: InputDecoration(
-                      labelText: "Email",
-                      // labelStyle: const TextStyle(color: Color(0xFFE7378D)),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: Color(0xFFE7378D)),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: inputDecoration("Email"),
                   ),
+
                   const SizedBox(height: 20),
 
-                  // PASSWORD
+                  TextField(
+                    controller: noHpController,
+                    keyboardType: TextInputType.phone,
+                    decoration: inputDecoration("No HP"),
+                  ),
+
+                  const SizedBox(height: 20),
+
                   TextField(
                     controller: passwordController,
                     obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: "Password",
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: Color(0xFFE7378D)),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
+                    decoration: inputDecoration("Password"),
                   ),
+
                   const SizedBox(height: 30),
 
-                  // BUTTON REGISTER
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -197,14 +193,15 @@ class _RegisterPageState extends State<RegisterPage> {
                           : const Text(
                               "Register",
                               style: TextStyle(
-                                  fontSize: 18, color: Colors.white),
+                                fontSize: 18,
+                                color: Colors.white,
+                              ),
                             ),
                     ),
                   ),
 
                   const SizedBox(height: 10),
 
-                  // KE LOGIN (tanpa ripple hover)
                   TextButton(
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFFE7378D),

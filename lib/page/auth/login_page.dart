@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'register_page.dart';
 import '../user/user_page.dart';
 import '../admin/admin_page.dart';
+import '../../service/authService.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -30,25 +29,16 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => isLoading = true);
 
     try {
-      UserCredential userCredential =
-          await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final data = await AuthService.login(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
 
-      String uid = userCredential.user!.uid;
+      final role = data["role"] ?? "user";
 
-      // 🔥 Ambil data dari Firestore
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .get();
+      if (!mounted) return;
 
-      // 🔐 Ambil role (default user kalau kosong)
-      String role = doc.data()?['role'] ?? 'user';
-
-      // 🚀 Redirect sesuai role
-      if (role == 'admin') {
+      if (role == "admin") {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const AdminHomePage()),
@@ -59,18 +49,21 @@ class _LoginPageState extends State<LoginPage> {
           MaterialPageRoute(builder: (context) => const UserHomePage()),
         );
       }
-
-    } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? "Login gagal")),
-      );
     } catch (e) {
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
+        SnackBar(
+          content: Text(
+            e.toString().replaceAll("Exception: ", ""),
+          ),
+        ),
       );
     }
 
-    setState(() => isLoading = false);
+    if (mounted) {
+      setState(() => isLoading = false);
+    }
   }
 
   @override
@@ -83,10 +76,10 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false, // ✅ keyboard gak bikin layout ikut naik
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Lingkaran gradient pink di background
           Positioned(
             top: -100,
             left: -100,
@@ -103,6 +96,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           ),
+
           Positioned(
             bottom: -120,
             right: -120,
@@ -120,7 +114,6 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
 
-          // Konten utama
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -135,11 +128,12 @@ class _LoginPageState extends State<LoginPage> {
                       color: Color(0xFFE7378D),
                     ),
                   ),
+
                   const SizedBox(height: 40),
 
-                  // 📧 EMAIL
                   TextField(
                     controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
                       labelText: "Email",
                       enabledBorder: OutlineInputBorder(
@@ -147,14 +141,16 @@ class _LoginPageState extends State<LoginPage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: Color(0xFFE7378D)),
+                        borderSide: const BorderSide(
+                          color: Color(0xFFE7378D),
+                        ),
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 20),
 
-                  // 🔒 PASSWORD
                   TextField(
                     controller: passwordController,
                     obscureText: true,
@@ -165,14 +161,16 @@ class _LoginPageState extends State<LoginPage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: Color(0xFFE7378D)),
+                        borderSide: const BorderSide(
+                          color: Color(0xFFE7378D),
+                        ),
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 10),
 
-                  // Lupa Password
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
@@ -190,9 +188,9 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 20),
 
-                  // 🔥 BUTTON LOGIN
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -212,14 +210,15 @@ class _LoginPageState extends State<LoginPage> {
                           : const Text(
                               "Login",
                               style: TextStyle(
-                                  fontSize: 18, color: Colors.white),
+                                fontSize: 18,
+                                color: Colors.white,
+                              ),
                             ),
                     ),
                   ),
 
                   const SizedBox(height: 10),
 
-                  // 🔗 KE REGISTER
                   TextButton(
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFFE7378D),
