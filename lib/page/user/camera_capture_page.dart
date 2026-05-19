@@ -4,7 +4,8 @@ import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
 
 class CameraCapturePage extends StatefulWidget {
-  const CameraCapturePage({super.key});
+  final int initialCamera; // 1 = belakang, 0 = depan
+  CameraCapturePage({super.key, this.initialCamera = 1});
 
   @override
   _CameraCapturePageState createState() => _CameraCapturePageState();
@@ -15,42 +16,36 @@ class _CameraCapturePageState extends State<CameraCapturePage> {
   Future<void>? _initializeFuture;
   bool _isTakingPicture = false;
   File? _selectedImage;
-  String? _errorMessage;
+  int _currentCamera = 1;
 
-  final ImagePicker _picker = ImagePicker(); // gunakan image_picker untuk galeri
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
+    _currentCamera = widget.initialCamera;
     _initCamera();
   }
 
   Future<void> _initCamera() async {
-    try {
-      final cameras = await availableCameras();
-      if (cameras.isEmpty) {
-        setState(() {
-          _errorMessage = "Tidak ada kamera di perangkat ini.";
-        });
-        return;
-      }
-      final backCamera = cameras.firstWhere(
-          (camera) => camera.lensDirection == CameraLensDirection.back,
-          orElse: () => cameras.first);
+    final cameras = await availableCameras();
+    if (cameras.isEmpty) return;
 
-      _controller = CameraController(backCamera, ResolutionPreset.high);
-      _initializeFuture = _controller!.initialize();
+    final selectedCamera = (_currentCamera == 1)
+        ? cameras.firstWhere(
+            (cam) => cam.lensDirection == CameraLensDirection.back,
+            orElse: () => cameras.first)
+        : cameras.firstWhere(
+            (cam) => cam.lensDirection == CameraLensDirection.front,
+            orElse: () => cameras.first);
 
-      if (!mounted) return;
-      setState(() {});
-    } catch (e) {
-      setState(() {
-        _errorMessage = "Gagal membuka kamera: $e";
-      });
-    }
+    _controller = CameraController(selectedCamera, ResolutionPreset.high);
+    _initializeFuture = _controller!.initialize();
+
+    if (!mounted) return;
+    setState(() {});
   }
 
-  // Ambil foto dari kamera
   Future<void> _takePicture() async {
     if (_controller == null || _isTakingPicture) return;
 
@@ -63,35 +58,28 @@ class _CameraCapturePageState extends State<CameraCapturePage> {
       final image = await _controller!.takePicture();
       if (!mounted) return;
 
-      _selectedImage = File(image.path);
-
       Navigator.pop(context, image.path);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Gagal mengambil foto: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Gagal mengambil foto: $e")));
     } finally {
-      if (mounted) {
-        setState(() {
-          _isTakingPicture = false;
-        });
-      }
+      if (mounted) setState(() => _isTakingPicture = false);
     }
   }
 
-  // Ambil gambar dari galeri
   Future<void> _pickFromGallery() async {
-    try {
-      final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-      if (pickedFile != null) {
-        _selectedImage = File(pickedFile.path);
-        Navigator.pop(context, pickedFile.path); // kembali ke laporan dengan path
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Gagal memilih gambar: $e")));
+    final result = await _picker.pickImage(source: ImageSource.gallery);
+    if (result != null) {
+      Navigator.pop(context, result.path);
     }
+  }
+
+  void _switchCamera() {
+    setState(() {
+      _currentCamera = _currentCamera == 1 ? 0 : 1;
+      _initCamera();
+    });
   }
 
   @override
@@ -102,23 +90,17 @@ class _CameraCapturePageState extends State<CameraCapturePage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_errorMessage != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text("Ambil Foto")),
-        body: Center(child: Text(_errorMessage!)),
-      );
-    }
-
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(title: const Text("Ambil Foto"), backgroundColor: Colors.black),
+      appBar:
+          AppBar(title: const Text("Ambil Foto"), backgroundColor: Colors.black),
       body: _controller == null
           ? const Center(child: CircularProgressIndicator())
           : FutureBuilder<void>(
               future: _initializeFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.done) {
-                  return Center(child: CameraPreview(_controller!));
+                  return CameraPreview(_controller!);
                 }
                 return const Center(child: CircularProgressIndicator());
               },
@@ -154,6 +136,11 @@ class _CameraCapturePageState extends State<CameraCapturePage> {
                   minimumSize: const Size(double.infinity, 50),
                 ),
               ),
+            ),
+            const SizedBox(width: 10),
+            IconButton(
+              icon: const Icon(Icons.switch_camera, color: Colors.white),
+              onPressed: _switchCamera,
             ),
           ],
         ),

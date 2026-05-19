@@ -1,12 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../service/uploadfotoService.dart';
-import 'package:camera/camera.dart';
-import 'camera_capture_page.dart'; 
+import 'camera_capture_page.dart';
 
 class LaporanPage extends StatefulWidget {
   const LaporanPage({super.key});
@@ -22,50 +20,36 @@ class _LaporanPageState extends State<LaporanPage> {
   String? lokasi;
   bool isPublic = true;
   bool isLoading = false;
-  String? status;
-
-  final picker = ImagePicker();
 
   Future<void> pickCamera() async {
-    try {
-      // Membuka halaman preview kamera
-      final imagePath = await Navigator.push<String>(
-        context,
-        MaterialPageRoute(builder: (context) => const CameraCapturePage()),
-      );
+    final imagePath = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (context) => CameraCapturePage()),
+    );
 
-      if (imagePath != null) {
-        setState(() {
-          imageFile = File(imagePath);
-        });
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal mengambil foto: $e')),
-      );
+    if (imagePath != null) {
+      setState(() {
+        imageFile = File(imagePath);
+      });
     }
   }
 
-
   Future<void> getLocation() async {
     LocationPermission permission = await Geolocator.requestPermission();
-
     if (permission == LocationPermission.denied) return;
 
-    Position pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
+    Position pos =
+        await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
 
     setState(() {
       lokasi = "${pos.latitude}, ${pos.longitude}";
     });
   }
 
-  // Simpan laporan
   Future<void> submitLaporan() async {
     if (descController.text.isEmpty || lokasi == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Lengkapi data dulu!")),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Lengkapi data dulu!")));
       return;
     }
 
@@ -75,9 +59,9 @@ class _LaporanPageState extends State<LaporanPage> {
       final user = FirebaseAuth.instance.currentUser;
 
       String? imageUrl;
-        if (imageFile != null) {
-          imageUrl = await ImageKitService.uploadImage(imageFile!);
-        }
+      if (imageFile != null) {
+        imageUrl = await ImageKitService.uploadImage(imageFile!);
+      }
 
       await FirebaseFirestore.instance.collection('laporan').add({
         'userId': user!.uid,
@@ -89,16 +73,14 @@ class _LaporanPageState extends State<LaporanPage> {
         'createdAt': Timestamp.now(),
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Laporan berhasil dikirim")),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Laporan berhasil dikirim")));
 
       descController.clear();
       setState(() {
         imageFile = null;
         lokasi = null;
       });
-
     } catch (e) {
       print(e);
     }
@@ -114,24 +96,17 @@ class _LaporanPageState extends State<LaporanPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text("Buat Laporan", style: TextStyle(fontSize: 18)),
-
           const SizedBox(height: 16),
-
-          if (imageFile != null)
-            Image.file(imageFile!, height: 150),
-
-          Row(
-            children: [
-              ElevatedButton(
-                onPressed: pickCamera,
-                child: const Text("Camera"),
-              ),
-            ],
+          if (imageFile != null) Image.file(imageFile!, height: 150),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: pickCamera,
+              icon: const Icon(Icons.camera_alt),
+              label: const Text("Ambil Foto"),
+            ),
           ),
-
           const SizedBox(height: 16),
-
-          //Deskripsi
           TextField(
             controller: descController,
             maxLines: 3,
@@ -140,10 +115,7 @@ class _LaporanPageState extends State<LaporanPage> {
               border: OutlineInputBorder(),
             ),
           ),
-
           const SizedBox(height: 16),
-
-          // Lokasi
           Row(
             children: [
               ElevatedButton(
@@ -156,10 +128,7 @@ class _LaporanPageState extends State<LaporanPage> {
               ),
             ],
           ),
-
           const SizedBox(height: 16),
-
-          //Public / Private
           SwitchListTile(
             title: const Text("Publik"),
             value: isPublic,
@@ -169,10 +138,7 @@ class _LaporanPageState extends State<LaporanPage> {
               });
             },
           ),
-
           const SizedBox(height: 16),
-
-          //Submit
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
