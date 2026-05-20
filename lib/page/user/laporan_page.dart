@@ -18,11 +18,11 @@ class LaporanPage extends StatefulWidget {
 class _LaporanPageState extends State<LaporanPage> {
   final TextEditingController judulController = TextEditingController();
   final TextEditingController descController = TextEditingController();
+  final TextEditingController alamatController = TextEditingController(); // <-- Tambahkan controller untuk alamat
   File? imageFile;
   LatLng? _currentLatLng;
   Marker? _marker;
   String? lokasi;
-  String? alamat;
   bool isPublic = true;
   bool isLoading = false;
   bool isLoadingLocation = false;
@@ -46,30 +46,70 @@ class _LaporanPageState extends State<LaporanPage> {
 
   Future<void> getLocation() async {
     setState(() => isLoadingLocation = true);
-    LocationPermission permission = await Geolocator.requestPermission();
-    if (permission == LocationPermission.denied) {
-      setState(() => isLoadingLocation = false);
-      return;
-    }
-    Position pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
-    setState(() {
-      _currentLatLng = LatLng(pos.latitude, pos.longitude);
-      _marker = Marker(
-        point: _currentLatLng!,
-        width: 40,
-        height: 40,
-        child: const Icon(Icons.location_on, color: accentColor, size: 40),
+    
+    try {
+      LocationPermission permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        setState(() => isLoadingLocation = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text("Izin lokasi diperlukan untuk mengambil lokasi"),
+            backgroundColor: secondaryColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+        return;
+      }
+      
+      if (permission == LocationPermission.deniedForever) {
+        setState(() => isLoadingLocation = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text("Izin lokasi ditolak permanen, silakan izinkan dari pengaturan"),
+            backgroundColor: secondaryColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+        return;
+      }
+      
+      Position pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high
       );
-      lokasi = "${pos.latitude.toStringAsFixed(6)}, ${pos.longitude.toStringAsFixed(6)}";
-      alamat = "Jl. Kalimantan, Sumbersari, Jember";
-      isLoadingLocation = false;
-    });
+      
+      LatLng latLng = LatLng(pos.latitude, pos.longitude);
+      
+      setState(() {
+        _currentLatLng = latLng;
+        _marker = Marker(
+          point: _currentLatLng!,
+          width: 40,
+          height: 40,
+          child: const Icon(Icons.location_on, color: accentColor, size: 40),
+        );
+        lokasi = "${pos.latitude.toStringAsFixed(6)}, ${pos.longitude.toStringAsFixed(6)}";
+        isLoadingLocation = false;
+      });
+      
+    } catch (e) {
+      setState(() => isLoadingLocation = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Gagal mendapatkan lokasi: $e"),
+          backgroundColor: secondaryColor,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
   }
 
   Future<void> submitLaporan() async {
     if (judulController.text.isEmpty ||
         descController.text.isEmpty ||
+        alamatController.text.isEmpty || // <-- Validasi alamat
         _currentLatLng == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -81,27 +121,38 @@ class _LaporanPageState extends State<LaporanPage> {
       );
       return;
     }
+    
     setState(() => isLoading = true);
+    
     try {
       String? mediaUrl;
       if (imageFile != null) {
         mediaUrl = await ImageKitService.uploadImage(imageFile!);
       }
+      
       final payload = {
         "user_id": 1,
         "judul": judulController.text,
         "deskripsi": descController.text,
         "media": mediaUrl ?? "",
+        "imageUrl": mediaUrl ?? "",
         "latitude": _currentLatLng!.latitude,
         "longitude": _currentLatLng!.longitude,
-        "alamat": alamat ?? "",
+        "alamat": alamatController.text, // <-- Pakai inputan user
         "jenis_laporan": isPublic ? "public" : "private",
+        "isPublic": isPublic,
+        "status": "Diproses",
       };
+      
       final response = await http.post(
         Uri.parse("https://wadulguse-api.vercel.app/api/riwayat"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(payload),
       );
+      
+      print("Response status: ${response.statusCode}");
+      print("Response body: ${response.body}");
+      
       if (response.statusCode == 200 || response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -113,20 +164,33 @@ class _LaporanPageState extends State<LaporanPage> {
         );
         judulController.clear();
         descController.clear();
+        alamatController.clear(); // <-- Clear alamat
         setState(() {
           imageFile = null;
           _currentLatLng = null;
           _marker = null;
           lokasi = null;
-          alamat = null;
         });
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text("Gagal: ${response.statusCode} ${response.reasonPhrase}")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Gagal: ${response.statusCode} - ${response.body}"),
+            backgroundColor: secondaryColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          )
+        );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Error: $e")));
+      print("Error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error: $e"),
+          backgroundColor: secondaryColor,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        )
+      );
     }
     setState(() => isLoading = false);
   }
@@ -176,7 +240,7 @@ class _LaporanPageState extends State<LaporanPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Header ──────────────────────────────────────────────
+              // Header
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
@@ -234,7 +298,7 @@ class _LaporanPageState extends State<LaporanPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── Foto Section ────────────────────────────────────
+                    // Foto Section
                     _sectionLabel("FOTO KERUSAKAN"),
                     GestureDetector(
                       onTap: pickCamera,
@@ -318,7 +382,7 @@ class _LaporanPageState extends State<LaporanPage> {
                     ),
                     const SizedBox(height: 24),
 
-                    // ── Judul Section ───────────────────────────────────
+                    // Judul Section
                     _sectionLabel("JUDUL LAPORAN"),
                     TextField(
                       controller: judulController,
@@ -332,7 +396,7 @@ class _LaporanPageState extends State<LaporanPage> {
                     ),
                     const SizedBox(height: 20),
 
-                    // ── Deskripsi Section ───────────────────────────────
+                    // Deskripsi Section
                     _sectionLabel("DESKRIPSI"),
                     TextField(
                       controller: descController,
@@ -365,8 +429,23 @@ class _LaporanPageState extends State<LaporanPage> {
                     ),
                     const SizedBox(height: 24),
 
-                    // ── Lokasi Section ──────────────────────────────────
-                    _sectionLabel("LOKASI"),
+                    // Alamat Section (Input Manual)
+                    _sectionLabel("ALAMAT LENGKAP"),
+                    TextField(
+                      controller: alamatController,
+                      style: const TextStyle(
+                          color: secondaryColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500),
+                      maxLines: 2,
+                      decoration: _inputDecoration(
+                          "Contoh: Jl. Kalimantan No. 12, Sumbersari, Jember",
+                          Icons.location_on_rounded),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Lokasi GPS Section
+                    _sectionLabel("LOKASI GPS"),
                     Row(
                       children: [
                         Expanded(
@@ -415,8 +494,8 @@ class _LaporanPageState extends State<LaporanPage> {
                                           isLoadingLocation
                                               ? "Mengambil lokasi..."
                                               : _currentLatLng != null
-                                                  ? "Lokasi ditemukan"
-                                                  : "Ambil Lokasi Saat Ini",
+                                                  ? "Lokasi GPS ditemukan"
+                                                  : "Ambil Lokasi GPS",
                                           style: TextStyle(
                                             color: secondaryColor,
                                             fontWeight: FontWeight.w600,
@@ -458,36 +537,6 @@ class _LaporanPageState extends State<LaporanPage> {
                         ),
                       ],
                     ),
-
-                    // Alamat chip
-                    if (alamat != null) ...[
-                      const SizedBox(height: 10),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: secondaryColor.withOpacity(0.06),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.place_rounded,
-                                color: accentColor, size: 16),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                alamat!,
-                                style: const TextStyle(
-                                    color: secondaryColor,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
                     const SizedBox(height: 16),
 
                     // Map preview
@@ -536,7 +585,7 @@ class _LaporanPageState extends State<LaporanPage> {
 
                     const SizedBox(height: 24),
 
-                    // ── Visibilitas Section ─────────────────────────────
+                    // Visibilitas Section
                     _sectionLabel("VISIBILITAS"),
                     Container(
                       decoration: BoxDecoration(
@@ -569,7 +618,7 @@ class _LaporanPageState extends State<LaporanPage> {
 
                     const SizedBox(height: 32),
 
-                    // ── Submit Button ───────────────────────────────────
+                    // Submit Button
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
