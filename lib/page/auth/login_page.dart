@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'register_page.dart';
 import '../user/user_page.dart';
@@ -17,6 +19,20 @@ class _LoginPageState extends State<LoginPage> {
 
   bool isLoading = false;
 
+  Map<String, dynamic> decodeJwtPayload(String token) {
+    final parts = token.split('.');
+
+    if (parts.length != 3) {
+      throw Exception("Format token tidak valid");
+    }
+
+    final payload = parts[1];
+    final normalized = base64Url.normalize(payload);
+    final decoded = utf8.decode(base64Url.decode(normalized));
+
+    return jsonDecode(decoded);
+  }
+
   Future<void> login() async {
     if (emailController.text.trim().isEmpty ||
         passwordController.text.trim().isEmpty) {
@@ -34,19 +50,47 @@ class _LoginPageState extends State<LoginPage> {
         password: passwordController.text.trim(),
       );
 
-      final role = data["role"] ?? "user";
+      print("LOGIN RESPONSE: $data");
+
+      final token = data["token"];
+
+      if (token == null) {
+        throw Exception("Token tidak ditemukan dari response login");
+      }
+
+      final tokenPayload = decodeJwtPayload(token);
+
+      print("TOKEN PAYLOAD: $tokenPayload");
+
+      final dynamic rawUserId = tokenPayload["id"];
+
+      if (rawUserId == null) {
+        throw Exception("User ID tidak ditemukan di dalam token");
+      }
+
+      final int userId = rawUserId is int
+          ? rawUserId
+          : int.parse(rawUserId.toString());
+
+      final String role = tokenPayload["role"]?.toString() ??
+          data["role"]?.toString() ??
+          "user";
 
       if (!mounted) return;
 
       if (role == "admin") {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const AdminHomePage()),
+          MaterialPageRoute(
+            builder: (context) => const AdminHomePage(),
+          ),
         );
       } else {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const UserHomePage()),
+          MaterialPageRoute(
+            builder: (context) => UserHomePage(userId: userId),
+          ),
         );
       }
     } catch (e) {
@@ -76,7 +120,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: false, // ✅ keyboard gak bikin layout ikut naik
+      resizeToAvoidBottomInset: false,
       backgroundColor: Colors.white,
       body: Stack(
         children: [
@@ -96,7 +140,6 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           ),
-
           Positioned(
             bottom: -120,
             right: -120,
@@ -113,7 +156,6 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           ),
-
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24),

@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class RiwayatUserPage extends StatelessWidget {
-  const RiwayatUserPage({super.key});
+  final int userId; // <-- tambahkan parameter userId
+
+  const RiwayatUserPage({super.key, required this.userId}); // <-- required
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-
     return Scaffold(
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('laporan')
-            .where('userId', isEqualTo: user!.uid)
+            .where('userId', isEqualTo: userId) // <-- gunakan userId
             .where('status', isEqualTo: 'Selesai')
             .orderBy('createdAt', descending: true)
             .snapshots(),
@@ -61,7 +60,6 @@ class RiwayatUserPage extends StatelessWidget {
                           ),
                         )
                       : const Icon(Icons.image_not_supported),
-
                   title: Text(data['deskripsi'] ?? '-'),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

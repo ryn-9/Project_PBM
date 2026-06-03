@@ -6,7 +6,12 @@ import '../auth/login_page.dart';
 import 'laporan_page.dart';
 
 class UserHomePage extends StatefulWidget {
-  const UserHomePage({super.key});
+  final int userId;
+
+  const UserHomePage({
+    super.key,
+    required this.userId,
+  });
 
   @override
   State<UserHomePage> createState() => _UserHomePageState();
@@ -110,21 +115,21 @@ class _UserHomePageState extends State<UserHomePage> {
   }
 
   Widget _buildBody() {
-    switch (currentIndex) {
-      case 0:
-        return _dashboardContent();
-      case 1:
-        return const LaporanPage();
-      case 2:
-        return const Center(child: Text("Kamera"));
-      case 3:
-        return const RiwayatUserPage();
-      case 4:
-        return const Center(child: Text("Halaman Profil"));
-      default:
-        return const Center(child: Text("Error"));
-    }
+  switch (currentIndex) {
+    case 0:
+      return _dashboardContent();
+    case 1:
+      return LaporanPage(userId: widget.userId); // <-- userId diteruskan
+    case 2:
+      return const Center(child: Text("Kamera"));
+    case 3:
+      return RiwayatUserPage(userId: widget.userId); // kalau page riwayat juga butuh userId
+    case 4:
+      return const Center(child: Text("Halaman Profil"));
+    default:
+      return const Center(child: Text("Error"));
   }
+}
 
   String _getTitle() {
     switch (currentIndex) {
