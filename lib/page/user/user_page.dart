@@ -42,19 +42,19 @@ class _UserHomePageState extends State<UserHomePage> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        actions: [
-          IconButton(
-            onPressed: () async {
-              await FirebaseAuth.instance.signOut();
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => const LoginPage()),
-                (route) => false,
-              );
-            },
-            icon: Icon(Icons.logout, color: dominantColor),
-          )
-        ],
+        // actions: [
+        //   IconButton(
+        //     onPressed: () async {
+        //       await FirebaseAuth.instance.signOut();
+        //       Navigator.pushAndRemoveUntil(
+        //         context,
+        //         MaterialPageRoute(builder: (context) => const LoginPage()),
+        //         (route) => false,
+        //       );
+        //     },
+        //     icon: Icon(Icons.logout, color: dominantColor),
+        //   )
+        // ],
       ),
       body: _buildBody(),
       bottomNavigationBar: _buildBottomNavBar(),

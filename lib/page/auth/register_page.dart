@@ -15,6 +15,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final passwordController = TextEditingController();
 
   bool isLoading = false;
+  bool isPasswordVisible = false;
 
   Future<void> register() async {
     if (usernameController.text.trim().isEmpty ||
@@ -168,9 +169,35 @@ class _RegisterPageState extends State<RegisterPage> {
 
                   TextField(
                     controller: passwordController,
-                    obscureText: true,
-                    decoration: inputDecoration("Password"),
+                    obscureText: !isPasswordVisible,
+                    decoration: InputDecoration(
+                      labelText: "Password",
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          isPasswordVisible
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                          color: const Color(0xFFE7378D),
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            isPasswordVisible = !isPasswordVisible;
+                          });
+                        },
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: const BorderSide(color: Colors.grey),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: const BorderSide(
+                          color: Color(0xFFE7378D),
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                   ),
+
 
                   const SizedBox(height: 30),
 

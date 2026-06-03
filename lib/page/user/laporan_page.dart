@@ -1,18 +1,23 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
-import 'package:http/http.dart' as http;
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
-import 'camera_capture_page.dart';
-import 'package:http_parser/http_parser.dart';
 
+import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import 'package:latlong2/latlong.dart';
+
+import 'camera_capture_page.dart';
 
 class LaporanPage extends StatefulWidget {
-  final int userId; 
-  const LaporanPage({super.key, required this.userId});
-  
+  final int userId;
+
+  const LaporanPage({
+    super.key,
+    required this.userId,
+  });
+
   @override
   State<LaporanPage> createState() => _LaporanPageState();
 }
@@ -40,7 +45,9 @@ class _LaporanPageState extends State<LaporanPage> {
   Future<void> pickCamera() async {
     final imagePath = await Navigator.push<String>(
       context,
-      MaterialPageRoute(builder: (context) => CameraCapturePage()),
+      MaterialPageRoute(
+        builder: (context) => CameraCapturePage(),
+      ),
     );
 
     if (imagePath != null) {
@@ -107,15 +114,9 @@ class _LaporanPageState extends State<LaporanPage> {
           alamatController.clear();
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text("Izin lokasi diperlukan untuk mengambil lokasi"),
-            backgroundColor: secondaryColor,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
+        _showSnackBar(
+          message: "Izin lokasi diperlukan untuk mengambil lokasi",
+          color: secondaryColor,
         );
         return;
       }
@@ -128,17 +129,10 @@ class _LaporanPageState extends State<LaporanPage> {
           alamatController.clear();
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(
+        _showSnackBar(
+          message:
               "Izin lokasi ditolak permanen, silakan izinkan dari pengaturan",
-            ),
-            backgroundColor: secondaryColor,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
+          color: secondaryColor,
         );
         return;
       }
@@ -192,142 +186,145 @@ class _LaporanPageState extends State<LaporanPage> {
         alamatController.clear();
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Gagal mendapatkan lokasi: $e"),
-          backgroundColor: secondaryColor,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
+      _showSnackBar(
+        message: "Gagal mendapatkan lokasi: $e",
+        color: secondaryColor,
       );
+    }
+  }
+
+  MediaType _getImageMediaType(String path) {
+    final extension = path.split('.').last.toLowerCase();
+
+    switch (extension) {
+      case 'png':
+        return MediaType('image', 'png');
+      case 'webp':
+        return MediaType('image', 'webp');
+      case 'jpg':
+      case 'jpeg':
+      default:
+        return MediaType('image', 'jpeg');
     }
   }
 
   Future<void> submitLaporan() async {
-  if (judulController.text.trim().isEmpty ||
-      descController.text.trim().isEmpty ||
-      alamatController.text.trim().isEmpty ||
-      _currentLatLng == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text("Lengkapi semua data terlebih dahulu!"),
-        backgroundColor: secondaryColor,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-    );
-    return;
-  }
-
-  setState(() {
-    isLoading = true;
-  });
-
-  try {
-    final request = http.MultipartRequest(
-      "POST",
-      Uri.parse("https://wadulguse-api.vercel.app/api/laporan"),
-    );
-
-    request.fields["user_id"] = widget.userId.toString();
-    request.fields["judul"] = judulController.text.trim();
-    request.fields["deskripsi"] = descController.text.trim();
-    request.fields["latitude"] = _currentLatLng!.latitude.toString();
-    request.fields["longitude"] = _currentLatLng!.longitude.toString();
-    request.fields["alamat"] = alamatController.text.trim();
-    request.fields["jenis_laporan"] = isPublic ? "public" : "private";
-
-    if (imageFile != null) {
-      request.files.add(
-        await http.MultipartFile.fromPath(
-          "media",
-          imageFile!.path,
-          contentType: MediaType("image", "jpeg"),
-        ),
+    if (judulController.text.trim().isEmpty ||
+        descController.text.trim().isEmpty ||
+        alamatController.text.trim().isEmpty ||
+        _currentLatLng == null) {
+      _showSnackBar(
+        message: "Lengkapi semua data terlebih dahulu!",
+        color: secondaryColor,
       );
+      return;
     }
 
-    print("POST /api/laporan");
-    print("user_id: ${widget.userId}");
-    print("judul: ${judulController.text.trim()}");
-    print("deskripsi: ${descController.text.trim()}");
-    print("latitude: ${_currentLatLng!.latitude}");
-    print("longitude: ${_currentLatLng!.longitude}");
-    print("alamat: ${alamatController.text.trim()}");
-    print("jenis_laporan: ${isPublic ? "public" : "private"}");
-    print("media ada: ${imageFile != null}");
-
-    final streamedResponse = await request.send();
-    final response = await http.Response.fromStream(streamedResponse);
-
-    print("STATUS: ${response.statusCode}");
-    print("BODY: ${response.body}");
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text("✓ Laporan berhasil dikirim!"),
-          backgroundColor: Colors.green.shade700,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-
-      judulController.clear();
-      descController.clear();
-      alamatController.clear();
-
-      setState(() {
-        imageFile = null;
-        _currentLatLng = null;
-        _marker = null;
-        lokasi = null;
-      });
-    } else {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Gagal: ${response.statusCode} - ${response.body}"),
-          backgroundColor: secondaryColor,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-    }
-  } catch (e) {
-    if (!mounted) return;
-
-    print("ERROR SUBMIT LAPORAN: $e");
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("Error submit laporan: $e"),
-        backgroundColor: secondaryColor,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-    );
-  }
-
-  if (mounted) {
     setState(() {
-      isLoading = false;
+      isLoading = true;
     });
+
+    try {
+      final request = http.MultipartRequest(
+        "POST",
+        Uri.parse("https://wadulguse-api.vercel.app/api/laporan"),
+      );
+
+      final jenisLaporan = isPublic ? "public" : "private";
+
+      request.fields["user_id"] = widget.userId.toString();
+      request.fields["judul"] = judulController.text.trim();
+      request.fields["deskripsi"] = descController.text.trim();
+      request.fields["latitude"] = _currentLatLng!.latitude.toString();
+      request.fields["longitude"] = _currentLatLng!.longitude.toString();
+      request.fields["alamat"] = alamatController.text.trim();
+      request.fields["jenis_laporan"] = jenisLaporan;
+
+      if (imageFile != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            "media",
+            imageFile!.path,
+            contentType: _getImageMediaType(imageFile!.path),
+          ),
+        );
+      }
+
+      print("POST /api/laporan");
+      print("user_id: ${widget.userId}");
+      print("judul: ${judulController.text.trim()}");
+      print("deskripsi: ${descController.text.trim()}");
+      print("latitude: ${_currentLatLng!.latitude}");
+      print("longitude: ${_currentLatLng!.longitude}");
+      print("alamat: ${alamatController.text.trim()}");
+      print("jenis_laporan: $jenisLaporan");
+      print("media ada: ${imageFile != null}");
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      print("STATUS: ${response.statusCode}");
+      print("BODY: ${response.body}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (!mounted) return;
+
+        _showSnackBar(
+          message: "✓ Laporan berhasil dikirim!",
+          color: Colors.green.shade700,
+        );
+
+        judulController.clear();
+        descController.clear();
+        alamatController.clear();
+
+        setState(() {
+          imageFile = null;
+          _currentLatLng = null;
+          _marker = null;
+          lokasi = null;
+        });
+      } else {
+        if (!mounted) return;
+
+        _showSnackBar(
+          message: "Gagal: ${response.statusCode} - ${response.body}",
+          color: secondaryColor,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      print("ERROR SUBMIT LAPORAN: $e");
+
+      _showSnackBar(
+        message: "Error submit laporan: $e",
+        color: secondaryColor,
+      );
+    }
+
+    if (mounted) {
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
-}
+
+  void _showSnackBar({
+    required String message,
+    required Color color,
+  }) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -335,6 +332,65 @@ class _LaporanPageState extends State<LaporanPage> {
     descController.dispose();
     alamatController.dispose();
     super.dispose();
+  }
+
+  Widget _header() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: secondaryColor,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: secondaryColor.withOpacity(0.12),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 4,
+            ),
+            decoration: BoxDecoration(
+              color: accentColor.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text(
+              "FORM LAPORAN",
+              style: TextStyle(
+                color: accentColor,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 2,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            "Buat Laporan",
+            style: TextStyle(
+              color: dominantColor,
+              fontSize: 25,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            "Laporkan kerusakan jalan di sekitar Anda",
+            style: TextStyle(
+              color: dominantColor.withOpacity(0.7),
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _sectionLabel(String text) {
@@ -352,7 +408,10 @@ class _LaporanPageState extends State<LaporanPage> {
     );
   }
 
-  InputDecoration _inputDecoration(String hint, IconData icon) {
+  InputDecoration _inputDecoration({
+    required String hint,
+    required IconData icon,
+  }) {
     return InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(
@@ -365,7 +424,7 @@ class _LaporanPageState extends State<LaporanPage> {
         size: 20,
       ),
       filled: true,
-      fillColor: bgLight,
+      fillColor: cardBg,
       contentPadding: const EdgeInsets.symmetric(
         vertical: 16,
         horizontal: 16,
@@ -377,514 +436,308 @@ class _LaporanPageState extends State<LaporanPage> {
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide(
-          color: dominantColor.withOpacity(0.6),
-          width: 1,
+          color: dominantColor.withOpacity(0.8),
+          width: 1.1,
         ),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(
           color: accentColor,
-          width: 1.5,
+          width: 1.6,
         ),
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: bgLight,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
-                decoration: const BoxDecoration(
-                  color: secondaryColor,
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(28),
-                    bottomRight: Radius.circular(28),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _photoSection() {
+    return GestureDetector(
+      onTap: pickCamera,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        width: double.infinity,
+        height: imageFile != null ? 210 : 140,
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: imageFile != null
+                ? accentColor
+                : dominantColor.withOpacity(0.75),
+            width: imageFile != null ? 2 : 1.3,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: secondaryColor.withOpacity(0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: imageFile != null
+            ? ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Stack(
+                  fit: StackFit.expand,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: accentColor.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        "WADULGUSE",
-                        style: TextStyle(
-                          color: accentColor,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 2,
+                    Image.file(
+                      imageFile!,
+                      fit: BoxFit.cover,
+                    ),
+                    Positioned(
+                      bottom: 10,
+                      right: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      "Buat Laporan",
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: dominantColor,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      "Laporkan kerusakan jalan di sekitar Anda",
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: dominantColor.withOpacity(0.6),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _sectionLabel("FOTO KERUSAKAN"),
-                    GestureDetector(
-                      onTap: pickCamera,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        width: double.infinity,
-                        height: imageFile != null ? 200 : 130,
                         decoration: BoxDecoration(
-                          color: cardBg,
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(
-                            color: imageFile != null
-                                ? accentColor
-                                : dominantColor.withOpacity(0.5),
-                            width: imageFile != null ? 2 : 1.5,
-                          ),
+                          color: secondaryColor.withOpacity(0.85),
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                        child: imageFile != null
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(16),
-                                child: Stack(
-                                  fit: StackFit.expand,
-                                  children: [
-                                    Image.file(
-                                      imageFile!,
-                                      fit: BoxFit.cover,
-                                    ),
-                                    Positioned(
-                                      bottom: 10,
-                                      right: 10,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color:
-                                              secondaryColor.withOpacity(0.8),
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                        ),
-                                        child: const Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              Icons.edit,
-                                              color: dominantColor,
-                                              size: 14,
-                                            ),
-                                            SizedBox(width: 4),
-                                            Text(
-                                              "Ganti Foto",
-                                              style: TextStyle(
-                                                color: dominantColor,
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(14),
-                                    decoration: BoxDecoration(
-                                      color: accentColor.withOpacity(0.1),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.camera_alt_rounded,
-                                      color: accentColor,
-                                      size: 28,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  const Text(
-                                    "Ketuk untuk ambil foto",
-                                    style: TextStyle(
-                                      color: secondaryColor,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    "Foto kerusakan jalan",
-                                    style: TextStyle(
-                                      color: secondaryColor.withOpacity(0.4),
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    _sectionLabel("JUDUL LAPORAN"),
-                    TextField(
-                      controller: judulController,
-                      style: const TextStyle(
-                        color: secondaryColor,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      decoration: _inputDecoration(
-                        "Contoh: Jalan Rusak Parah di...",
-                        Icons.title_rounded,
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    _sectionLabel("DESKRIPSI"),
-                    TextField(
-                      controller: descController,
-                      maxLines: 4,
-                      style: const TextStyle(
-                        color: secondaryColor,
-                        fontSize: 14,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: "Jelaskan kondisi kerusakan secara detail...",
-                        hintStyle: TextStyle(
-                          color: secondaryColor.withOpacity(0.4),
-                          fontSize: 14,
-                        ),
-                        filled: true,
-                        fillColor: bgLight,
-                        contentPadding: const EdgeInsets.all(16),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide(
-                            color: dominantColor.withOpacity(0.6),
-                            width: 1,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: accentColor,
-                            width: 1.5,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    _sectionLabel("ALAMAT LENGKAP"),
-                    TextField(
-                      controller: alamatController,
-                      style: const TextStyle(
-                        color: secondaryColor,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 2,
-                      decoration: _inputDecoration(
-                        "Alamat akan terisi otomatis setelah lokasi GPS diambil",
-                        Icons.location_on_rounded,
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    _sectionLabel("LOKASI GPS"),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: isLoadingLocation ? null : getLocation,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 14,
-                                horizontal: 16,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _currentLatLng != null
-                                    ? accentColor.withOpacity(0.1)
-                                    : cardBg,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: _currentLatLng != null
-                                      ? accentColor
-                                      : dominantColor.withOpacity(0.5),
-                                  width: _currentLatLng != null ? 1.5 : 1,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  if (isLoadingLocation)
-                                    const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: accentColor,
-                                      ),
-                                    )
-                                  else
-                                    Icon(
-                                      _currentLatLng != null
-                                          ? Icons.my_location_rounded
-                                          : Icons.location_searching_rounded,
-                                      color: accentColor,
-                                      size: 18,
-                                    ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          isLoadingLocation
-                                              ? "Mengambil lokasi..."
-                                              : _currentLatLng != null
-                                                  ? "Lokasi GPS ditemukan"
-                                                  : "Ambil Lokasi GPS",
-                                          style: const TextStyle(
-                                            color: secondaryColor,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                        if (lokasi != null) ...[
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            lokasi!,
-                                            style: TextStyle(
-                                              color: secondaryColor
-                                                  .withOpacity(0.5),
-                                              fontSize: 11,
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                  if (_currentLatLng != null)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 3,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: accentColor.withOpacity(0.15),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: const Text(
-                                        "Ubah",
-                                        style: TextStyle(
-                                          color: accentColor,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                ],
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.edit,
+                              color: dominantColor,
+                              size: 14,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              "Ganti Foto",
+                              style: TextStyle(
+                                color: dominantColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    AnimatedSize(
-                      duration: const Duration(milliseconds: 400),
-                      curve: Curves.easeInOut,
-                      child: _currentLatLng == null
-                          ? const SizedBox.shrink()
-                          : Container(
-                              height: 220,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(18),
-                                border: Border.all(
-                                  color: dominantColor.withOpacity(0.5),
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: secondaryColor.withOpacity(0.08),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(17),
-                                child: FlutterMap(
-                                  options: MapOptions(
-                                    initialCenter: _currentLatLng!,
-                                    initialZoom: 15.0,
-                                  ),
-                                  children: [
-                                    TileLayer(
-                                      urlTemplate:
-                                          "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-                                      userAgentPackageName:
-                                          'com.example.project_pbm',
-                                    ),
-                                    MarkerLayer(
-                                      markers: _marker != null
-                                          ? [_marker!]
-                                          : [],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    _sectionLabel("VISIBILITAS"),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: cardBg,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: dominantColor.withOpacity(0.5),
-                          width: 1,
+                          ],
                         ),
                       ),
-                      child: Row(
-                        children: [
-                          _visibilityOption(
-                            label: "Publik",
-                            icon: Icons.public_rounded,
-                            subtitle: "Semua dapat melihat",
-                            selected: isPublic,
-                            onTap: () {
-                              setState(() {
-                                isPublic = true;
-                              });
-                            },
-                          ),
-                          Container(
-                            width: 1,
-                            height: 60,
-                            color: dominantColor.withOpacity(0.4),
-                          ),
-                          _visibilityOption(
-                            label: "Privat",
-                            icon: Icons.lock_outline_rounded,
-                            subtitle: "Hanya Anda",
-                            selected: !isPublic,
-                            onTap: () {
-                              setState(() {
-                                isPublic = false;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
                     ),
-
-                    const SizedBox(height: 32),
-
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: isLoading ? null : submitLaporan,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: secondaryColor,
-                          disabledBackgroundColor:
-                              secondaryColor.withOpacity(0.4),
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  color: dominantColor,
-                                  strokeWidth: 2.5,
-                                ),
-                              )
-                            : const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.send_rounded,
-                                    color: dominantColor,
-                                    size: 18,
-                                  ),
-                                  SizedBox(width: 10),
-                                  Text(
-                                    "Kirim Laporan",
-                                    style: TextStyle(
-                                      color: dominantColor,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
                   ],
                 ),
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: accentColor.withOpacity(0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt_rounded,
+                      color: accentColor,
+                      size: 30,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    "Ketuk untuk ambil foto",
+                    style: TextStyle(
+                      color: secondaryColor,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    "Foto kerusakan jalan",
+                    style: TextStyle(
+                      color: secondaryColor.withOpacity(0.45),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
-            ],
+      ),
+    );
+  }
+
+  Widget _descriptionField() {
+    return TextField(
+      controller: descController,
+      maxLines: 4,
+      style: const TextStyle(
+        color: secondaryColor,
+        fontSize: 14,
+      ),
+      decoration: InputDecoration(
+        hintText: "Jelaskan kondisi kerusakan secara detail...",
+        hintStyle: TextStyle(
+          color: secondaryColor.withOpacity(0.4),
+          fontSize: 14,
+        ),
+        filled: true,
+        fillColor: cardBg,
+        contentPadding: const EdgeInsets.all(16),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(
+            color: dominantColor.withOpacity(0.8),
+            width: 1.1,
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(
+            color: accentColor,
+            width: 1.6,
           ),
         ),
       ),
+    );
+  }
+
+  Widget _gpsButton() {
+    return GestureDetector(
+      onTap: isLoadingLocation ? null : getLocation,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(
+          vertical: 14,
+          horizontal: 16,
+        ),
+        decoration: BoxDecoration(
+          color: _currentLatLng != null ? accentColor.withOpacity(0.1) : cardBg,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _currentLatLng != null
+                ? accentColor
+                : dominantColor.withOpacity(0.75),
+            width: _currentLatLng != null ? 1.5 : 1.1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: secondaryColor.withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            if (isLoadingLocation)
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: accentColor,
+                ),
+              )
+            else
+              Icon(
+                _currentLatLng != null
+                    ? Icons.my_location_rounded
+                    : Icons.location_searching_rounded,
+                color: accentColor,
+                size: 20,
+              ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isLoadingLocation
+                        ? "Mengambil lokasi..."
+                        : _currentLatLng != null
+                            ? "Lokasi GPS ditemukan"
+                            : "Ambil Lokasi GPS",
+                    style: const TextStyle(
+                      color: secondaryColor,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                  if (lokasi != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      lokasi!,
+                      style: TextStyle(
+                        color: secondaryColor.withOpacity(0.55),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (_currentLatLng != null)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 3,
+                ),
+                decoration: BoxDecoration(
+                  color: accentColor.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  "Ubah",
+                  style: TextStyle(
+                    color: accentColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _mapPreview() {
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeInOut,
+      child: _currentLatLng == null
+          ? const SizedBox.shrink()
+          : Container(
+              height: 220,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: dominantColor.withOpacity(0.7),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: secondaryColor.withOpacity(0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(17),
+                child: FlutterMap(
+                  options: MapOptions(
+                    initialCenter: _currentLatLng!,
+                    initialZoom: 15.0,
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                      userAgentPackageName: 'com.example.project_pbm',
+                    ),
+                    MarkerLayer(
+                      markers: _marker != null ? [_marker!] : [],
+                    ),
+                  ],
+                ),
+              ),
+            ),
     );
   }
 
@@ -912,9 +765,7 @@ class _LaporanPageState extends State<LaporanPage> {
             children: [
               Icon(
                 icon,
-                color: selected
-                    ? accentColor
-                    : secondaryColor.withOpacity(0.4),
+                color: selected ? accentColor : secondaryColor.withOpacity(0.4),
                 size: 20,
               ),
               const SizedBox(width: 8),
@@ -925,7 +776,7 @@ class _LaporanPageState extends State<LaporanPage> {
                     Text(
                       label,
                       style: TextStyle(
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
                         fontSize: 13,
                         color: selected
                             ? secondaryColor
@@ -951,6 +802,207 @@ class _LaporanPageState extends State<LaporanPage> {
                     color: accentColor,
                   ),
                 ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _visibilitySection() {
+    return Container(
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: dominantColor.withOpacity(0.75),
+          width: 1.1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: secondaryColor.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          _visibilityOption(
+            label: "Publik",
+            icon: Icons.public_rounded,
+            subtitle: "Semua dapat melihat",
+            selected: isPublic,
+            onTap: () {
+              setState(() {
+                isPublic = true;
+              });
+            },
+          ),
+          Container(
+            width: 1,
+            height: 60,
+            color: dominantColor.withOpacity(0.4),
+          ),
+          _visibilityOption(
+            label: "Privat",
+            icon: Icons.lock_outline_rounded,
+            subtitle: "Hanya Anda",
+            selected: !isPublic,
+            onTap: () {
+              setState(() {
+                isPublic = false;
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _submitButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : submitLaporan,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: secondaryColor,
+          disabledBackgroundColor: secondaryColor.withOpacity(0.4),
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 0,
+        ),
+        child: isLoading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  color: dominantColor,
+                  strokeWidth: 2.5,
+                ),
+              )
+            : const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.send_rounded,
+                    color: dominantColor,
+                    size: 18,
+                  ),
+                  SizedBox(width: 10),
+                  Text(
+                    "Kirim Laporan",
+                    style: TextStyle(
+                      color: dominantColor,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _formSection({
+    required String label,
+    required Widget child,
+    double bottom = 20,
+  }) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottom),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionLabel(label),
+          child,
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: bgLight,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _header(),
+
+              const SizedBox(height: 18),
+
+              _formSection(
+                label: "FOTO KERUSAKAN",
+                child: _photoSection(),
+                bottom: 24,
+              ),
+
+              _formSection(
+                label: "JUDUL LAPORAN",
+                child: TextField(
+                  controller: judulController,
+                  style: const TextStyle(
+                    color: secondaryColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  decoration: _inputDecoration(
+                    hint: "Contoh: Jalan Rusak Parah di...",
+                    icon: Icons.title_rounded,
+                  ),
+                ),
+              ),
+
+              _formSection(
+                label: "DESKRIPSI",
+                child: _descriptionField(),
+                bottom: 24,
+              ),
+
+              _formSection(
+                label: "ALAMAT LENGKAP",
+                child: TextField(
+                  controller: alamatController,
+                  style: const TextStyle(
+                    color: secondaryColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 2,
+                  decoration: _inputDecoration(
+                    hint: "Alamat akan terisi otomatis setelah lokasi GPS diambil",
+                    icon: Icons.location_on_rounded,
+                  ),
+                ),
+                bottom: 16,
+              ),
+
+              _formSection(
+                label: "LOKASI GPS",
+                child: _gpsButton(),
+                bottom: 16,
+              ),
+
+              _mapPreview(),
+
+              const SizedBox(height: 24),
+
+              _formSection(
+                label: "VISIBILITAS",
+                child: _visibilitySection(),
+                bottom: 32,
+              ),
+
+              _submitButton(),
+
+              const SizedBox(height: 24),
             ],
           ),
         ),
