@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'camera_capture_page.dart';
+import 'package:http_parser/http_parser.dart';
 
 
 class LaporanPage extends StatefulWidget {
@@ -245,6 +246,7 @@ class _LaporanPageState extends State<LaporanPage> {
         await http.MultipartFile.fromPath(
           "media",
           imageFile!.path,
+          contentType: MediaType("image", "jpeg"),
         ),
       );
     }

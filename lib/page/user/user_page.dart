@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:project_pbm/page/admin/admin_profil_page.dart';
 import 'package:project_pbm/page/user/riwayat_user.dart';
 import '../auth/login_page.dart';
 import 'laporan_page.dart';
@@ -125,7 +126,7 @@ class _UserHomePageState extends State<UserHomePage> {
     case 3:
       return RiwayatUserPage(userId: widget.userId); // kalau page riwayat juga butuh userId
     case 4:
-      return const Center(child: Text("Halaman Profil"));
+      return const ProfilePage();
     default:
       return const Center(child: Text("Error"));
   }
