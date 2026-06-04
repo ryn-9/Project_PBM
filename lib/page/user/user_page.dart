@@ -49,6 +49,8 @@ class _UserHomePageState extends State<UserHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    print("USER ID DI USER HOME PAGE: ${widget.userId}");
+
     return Scaffold(
       backgroundColor: bgLight,
       appBar: AppBar(
@@ -127,12 +129,12 @@ class _UserHomePageState extends State<UserHomePage> {
   }
 
   Widget _buildBody() {
-    switch (currentIndex) {
-      case 0:
-        return _dashboardContent();
-
+      switch (currentIndex) {
+        case 0:
+          return _dashboardContent();
+  
       case 1:
-        return LaporanPage(
+          return LaporanPage(
           key: ValueKey(capturedImagePathFromNavbar ?? "laporan-manual"),
           userId: widget.userId,
           initialImagePath: capturedImagePathFromNavbar,
@@ -143,25 +145,26 @@ class _UserHomePageState extends State<UserHomePage> {
           },
         );
 
-      case 2:
-        return const Center(
+        case 2:
+          return const Center(
           child: Text("Kamera"),
         );
-
+  
       case 3:
-        return RiwayatUserPage(
+        print("USER ID DIKIRIM KE RIWAYAT: ${widget.userId}");
+          return RiwayatUserPage(
           userId: widget.userId,
         );
 
-      case 4:
-        return const ProfilePage();
-
+        case 4:
+          return const ProfilePage();
+  
       default:
-        return const Center(
+          return const Center(
           child: Text("Error"),
         );
+      }
     }
-  }
 
   String _getTitle() {
     switch (currentIndex) {
@@ -343,7 +346,7 @@ class _UserHomePageState extends State<UserHomePage> {
                             ),
 
                             const SizedBox(width: 16),
-
+                            // Dislike
                             InkWell(
                               onTap: () {
                                 setStateCard(() {
@@ -366,7 +369,7 @@ class _UserHomePageState extends State<UserHomePage> {
                             ),
 
                             const SizedBox(width: 16),
-
+                            // Komentar
                             InkWell(
                               onTap: () {
                                 _showCommentSheet();
