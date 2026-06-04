@@ -12,10 +12,14 @@ import 'camera_capture_page.dart';
 
 class LaporanPage extends StatefulWidget {
   final int userId;
+  final String? initialImagePath;
+  final VoidCallback? onReportSubmitted;
 
   const LaporanPage({
     super.key,
     required this.userId,
+    this.initialImagePath,
+    this.onReportSubmitted,
   });
 
   @override
@@ -42,6 +46,30 @@ class _LaporanPageState extends State<LaporanPage> {
   static const Color bgLight = Color(0xFFF5F0E8);
   static const Color cardBg = Color(0xFFFFFFFF);
 
+  @override
+  void initState() {
+    super.initState();
+    _setInitialImage();
+  }
+
+  @override
+  void didUpdateWidget(covariant LaporanPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (widget.initialImagePath != oldWidget.initialImagePath) {
+      _setInitialImage();
+    }
+  }
+
+  void _setInitialImage() {
+    if (widget.initialImagePath != null &&
+        widget.initialImagePath!.isNotEmpty) {
+      setState(() {
+        imageFile = File(widget.initialImagePath!);
+      });
+    }
+  }
+
   Future<void> pickCamera() async {
     final imagePath = await Navigator.push<String>(
       context,
@@ -50,7 +78,7 @@ class _LaporanPageState extends State<LaporanPage> {
       ),
     );
 
-    if (imagePath != null) {
+    if (imagePath != null && imagePath.isNotEmpty) {
       setState(() {
         imageFile = File(imagePath);
       });
@@ -209,12 +237,13 @@ class _LaporanPageState extends State<LaporanPage> {
   }
 
   Future<void> submitLaporan() async {
-    if (judulController.text.trim().isEmpty ||
+    if (imageFile == null ||
+        judulController.text.trim().isEmpty ||
         descController.text.trim().isEmpty ||
         alamatController.text.trim().isEmpty ||
         _currentLatLng == null) {
       _showSnackBar(
-        message: "Lengkapi semua data terlebih dahulu!",
+        message: "Lengkapi foto, judul, deskripsi, alamat, dan lokasi!",
         color: secondaryColor,
       );
       return;
@@ -240,15 +269,13 @@ class _LaporanPageState extends State<LaporanPage> {
       request.fields["alamat"] = alamatController.text.trim();
       request.fields["jenis_laporan"] = jenisLaporan;
 
-      if (imageFile != null) {
-        request.files.add(
-          await http.MultipartFile.fromPath(
-            "media",
-            imageFile!.path,
-            contentType: _getImageMediaType(imageFile!.path),
-          ),
-        );
-      }
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          "media",
+          imageFile!.path,
+          contentType: _getImageMediaType(imageFile!.path),
+        ),
+      );
 
       print("POST /api/laporan");
       print("user_id: ${widget.userId}");
@@ -284,6 +311,8 @@ class _LaporanPageState extends State<LaporanPage> {
           _marker = null;
           lokasi = null;
         });
+
+        widget.onReportSubmitted?.call();
       } else {
         if (!mounted) return;
 
@@ -382,7 +411,7 @@ class _LaporanPageState extends State<LaporanPage> {
           ),
           const SizedBox(height: 4),
           Text(
-            "Laporkan kerusakan jalan di sekitar Anda",
+            "Ambil foto dari kamera, lalu lengkapi data laporan",
             style: TextStyle(
               color: dominantColor.withOpacity(0.7),
               fontSize: 13,
@@ -546,7 +575,7 @@ class _LaporanPageState extends State<LaporanPage> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    "Foto kerusakan jalan",
+                    "Bisa dari halaman ini atau dari navbar kamera",
                     style: TextStyle(
                       color: secondaryColor.withOpacity(0.45),
                       fontSize: 12,
@@ -935,7 +964,6 @@ class _LaporanPageState extends State<LaporanPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _header(),
-
               const SizedBox(height: 18),
 
               _formSection(
@@ -1001,7 +1029,6 @@ class _LaporanPageState extends State<LaporanPage> {
               ),
 
               _submitButton(),
-
               const SizedBox(height: 24),
             ],
           ),
