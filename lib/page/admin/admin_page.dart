@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:project_pbm/page/admin/laporan_admin_page.dart';
-import 'package:project_pbm/page/admin/admin_profil_page.dart';
+import 'package:project_pbm/page/profil_page.dart';
 import 'package:project_pbm/service/adminService.dart';
 import '../auth/login_page.dart';
 import 'package:project_pbm/widget/loading_widget.dart';
