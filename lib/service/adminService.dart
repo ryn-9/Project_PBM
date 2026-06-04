@@ -52,20 +52,31 @@ class AdminService {
     required String catatan,
   }) async {
     final response = await http.put(
-      Uri.parse("$baseUrl/laporan/$laporanId"),
+      Uri.parse("$baseUrl/laporan/$laporanId/status"),
       headers: {
         "Content-Type": "application/json",
       },
       body: jsonEncode({
         "status": status,
-        "catatan": catatan,
+        "catatan_admin": catatan,
       }),
     );
 
-    final body = jsonDecode(response.body);
+    print("UPDATE STATUS URL: $baseUrl/laporan/$laporanId/status");
+    print("UPDATE STATUS CODE: ${response.statusCode}");
+    print("UPDATE STATUS BODY: ${response.body}");
 
     if (response.statusCode != 200) {
-      throw Exception(body["message"] ?? "Gagal memperbarui laporan");
+      String errorMessage = "Gagal memperbarui laporan";
+
+      try {
+        final body = jsonDecode(response.body);
+        errorMessage = body["message"] ?? errorMessage;
+      } catch (_) {
+        errorMessage = "Server mengembalikan response bukan JSON";
+      }
+
+      throw Exception(errorMessage);
     }
   }
 }
