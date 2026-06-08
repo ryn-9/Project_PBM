@@ -102,7 +102,10 @@ class _LoginPageState extends State<LoginPage> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => UserHomePage(userId: userId),
+            builder: (context) => UserHomePage(
+              userId: userId,
+              token: token,
+            ),
           ),
         );
       }
@@ -258,7 +261,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 22),
 
                     Container(

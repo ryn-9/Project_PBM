@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:project_pbm/page/profil_page.dart';
 import 'package:project_pbm/page/user/riwayat_user.dart';
 import 'package:project_pbm/service/laporanService.dart';
-import 'laporan_page.dart';
+import 'laporan_user_page.dart';
 import 'camera_capture_page.dart';
 
 class UserHomePage extends StatefulWidget {
   final int userId;
+  final String token;
+
 
   const UserHomePage({
     super.key,
     required this.userId,
+    required this.token,
   });
 
   @override
@@ -124,81 +127,153 @@ class _UserHomePageState extends State<UserHomePage> {
     );
   }
 
-  Widget _buildBottomNavBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
+Widget _buildBottomNavBar() {
+  return Container(
+    height: 78,
+    decoration: BoxDecoration(
+      color: cardBg,
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(22),
+        topRight: Radius.circular(22),
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: secondaryColor.withOpacity(0.12),
+          blurRadius: 12,
+          offset: const Offset(0, -3),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: secondaryColor.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: BottomNavigationBar(
-        currentIndex: currentIndex,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        selectedItemColor: accentColor,
-        unselectedItemColor: secondaryColor.withOpacity(0.5),
-        type: BottomNavigationBarType.fixed,
-        onTap: (index) async {
-          if (index == 2) {
-            await openCameraFromNavbar();
-            return;
-          }
+      ],
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        _navItem(
+          index: 0,
+          icon: Icons.home_rounded,
+          label: "Beranda",
+        ),
 
-          setState(() {
-            currentIndex = index;
-          });
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded),
-            label: "Beranda",
+        _navItem(
+          index: 1,
+          icon: Icons.report_rounded,
+          label: "Laporan",
+        ),
+
+        _cameraNavItem(),
+
+        _navItem(
+          index: 3,
+          icon: Icons.archive_outlined,
+          label: "Riwayat",
+        ),
+
+        _navItem(
+          index: 4,
+          icon: Icons.person_rounded,
+          label: "Profil",
+        ),
+      ],
+    ),
+  );
+}
+
+  Widget _navItem({
+  required int index,
+  required IconData icon,
+  required String label,
+}) {
+  final bool isSelected = currentIndex == index;
+
+  return Expanded(
+    child: InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () {
+        setState(() {
+          currentIndex = index;
+        });
+      },
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            size: 24,
+            color: isSelected ? accentColor : secondaryColor.withOpacity(0.5),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.report_rounded),
-            label: "Laporan",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.camera_alt_rounded),
-            label: "Kamera",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.archive_outlined),
-            label: "Riwayat",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_rounded),
-            label: "Profil",
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              color: isSelected ? accentColor : secondaryColor.withOpacity(0.5),
+            ),
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
+
+Widget _cameraNavItem() {
+  return Expanded(
+    child: GestureDetector(
+      onTap: openCameraFromNavbar,
+      child: Transform.translate(
+        offset: const Offset(0, -16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 59,
+              height: 59,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: accentColor,
+                border: Border.all(
+                  color: cardBg,
+                  width: 4,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: accentColor.withOpacity(0.35),
+                    blurRadius: 12,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.camera_alt_rounded,
+                color: secondaryColor,
+                size: 28,
+              ),
+            ),
+            const SizedBox(height: 3),
+            const Text(
+              "Kamera",
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: secondaryColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
 
   Widget _buildBody() {
       switch (currentIndex) {
         case 0:
           return _dashboardContent();
   
-      case 1:
-          return LaporanPage(
-          key: ValueKey(capturedImagePathFromNavbar ?? "laporan-manual"),
-          userId: widget.userId,
-          initialImagePath: capturedImagePathFromNavbar,
-          onReportSubmitted: () {
-            setState(() {
-              capturedImagePathFromNavbar = null;
-            });
-          },
-        );
+     case 1:
+      return LaporanUserPage(
+        userId: widget.userId,
+        token: widget.token,
+      );
 
         case 2:
           return const Center(
