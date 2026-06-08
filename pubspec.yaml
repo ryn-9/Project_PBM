@@ -60,6 +60,8 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/images/app_icon.png"
+  adaptive_icon_background: "#1F3F47"
+  adaptive_icon_foreground: "assets/images/app_icon.png"
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -112,11 +114,11 @@ flutter:
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
 flutter_native_splash:
-  color: "#E7378D"          # warna background (misalnya putih)
+  color: "#DBC796"          # warna background (misalnya putih)
   image: assets/images/splash.png  # logo headset yang kamu upload
   android: true
   ios: true
 
   android_12:
     image: assets/images/splash.png
-    color: "#E7378D"
+    color: "#DBC796"
