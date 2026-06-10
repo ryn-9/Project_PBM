@@ -216,7 +216,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             : int.tryParse(sentMsg["id"].toString());
 
         if (id != null) {
-          _localMessageIds.add(id); // Tandai agar tidak di-append ulang oleh realtime
+          _localMessageIds.add(id);
           _lastMessageId = id;
         }
 
