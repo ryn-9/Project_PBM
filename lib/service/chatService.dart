@@ -74,4 +74,44 @@ class ChatService {
 
     throw Exception(data["message"] ?? "Gagal mengambil pesan");
   }
+
+  static Future<void> markMessagesAsRead({
+    required int roomId,
+    required int userId,
+  }) async {
+    final response = await http.put(
+      Uri.parse("${ApiConfig.baseUrl}/chat/messages/$roomId/read"),
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: jsonEncode({
+        "user_id": userId,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(data["message"] ?? "Gagal menandai pesan dibaca");
+    }
+  }
+
+  static Future<List<dynamic>> getChatRoomsByUser(int userId) async {
+    final response = await http.get(
+      Uri.parse("${ApiConfig.baseUrl}/chat/rooms/user/$userId"),
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return data["data"] ?? [];
+    }
+
+    throw Exception(data["message"] ?? "Gagal mengambil daftar chat");
+  }
 }

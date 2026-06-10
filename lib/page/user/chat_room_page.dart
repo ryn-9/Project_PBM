@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../service/chatService.dart';
 
 class ChatRoomPage extends StatefulWidget {
-  final int userId;
-  final int adminId;
+  final int currentUserId; // id akun yang sedang login
+  final int userId; // id pelapor
+  final int adminId; // id admin
   final int? referenceLaporanId;
 
   const ChatRoomPage({
     super.key,
+    required this.currentUserId,
     required this.userId,
     required this.adminId,
     this.referenceLaporanId,
@@ -29,18 +33,30 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
 
   bool isLoading = true;
   bool isSending = false;
+  bool shouldSendReference = false;
 
   int? roomId;
   List<dynamic> messages = [];
 
+  RealtimeChannel? chatChannel;
+
   @override
   void initState() {
     super.initState();
+
+    // Kalau masuk chat dari detail laporan, reference laporan akan ikut
+    // pada pesan pertama yang dikirim di halaman ini.
+    shouldSendReference = widget.referenceLaporanId != null;
+
     initChat();
   }
 
   @override
   void dispose() {
+    if (chatChannel != null) {
+      Supabase.instance.client.removeChannel(chatChannel!);
+    }
+
     messageController.dispose();
     scrollController.dispose();
     super.dispose();
@@ -56,6 +72,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       roomId = room["id"];
 
       await loadMessages();
+
+      subscribeRealtimeChat();
 
       if (mounted) {
         setState(() {
@@ -80,10 +98,40 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     }
   }
 
+  void subscribeRealtimeChat() {
+    if (roomId == null) return;
+
+    chatChannel = Supabase.instance.client
+        .channel("chat_room_$roomId")
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: "public",
+          table: "chat_messages",
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: "room_id",
+            value: roomId!,
+          ),
+          callback: (payload) async {
+            await loadMessages();
+
+            if (payload.eventType == PostgresChangeEvent.insert) {
+              scrollToBottom();
+            }
+          },
+        )
+        .subscribe();
+  }
+
   Future<void> loadMessages() async {
     if (roomId == null) return;
 
     try {
+      await ChatService.markMessagesAsRead(
+        roomId: roomId!,
+        userId: widget.currentUserId,
+      );
+
       final data = await ChatService.getMessagesByRoom(roomId!);
 
       if (!mounted) return;
@@ -108,15 +156,17 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     try {
       await ChatService.sendMessage(
         roomId: roomId!,
-        senderId: widget.userId,
+        senderId: widget.currentUserId,
         message: text,
-        referenceLaporanId: messages.isEmpty ? widget.referenceLaporanId : null,
+        referenceLaporanId:
+            shouldSendReference ? widget.referenceLaporanId : null,
       );
+
+      shouldSendReference = false;
 
       messageController.clear();
 
       await loadMessages();
-
       scrollToBottom();
     } catch (e) {
       if (!mounted) return;
@@ -148,6 +198,20 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     });
   }
 
+  String formatJam(dynamic rawDate) {
+    if (rawDate == null || rawDate.toString().isEmpty) return "";
+
+    try {
+      final date = DateTime.parse(rawDate.toString()).toLocal();
+      final hour = date.hour.toString().padLeft(2, "0");
+      final minute = date.minute.toString().padLeft(2, "0");
+
+      return "$hour:$minute";
+    } catch (_) {
+      return "";
+    }
+  }
+
   String formatStatus(String? status) {
     switch (status) {
       case "laporan_terkirim":
@@ -162,6 +226,18 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       default:
         return status ?? "-";
     }
+  }
+
+  Widget laporanPlaceholder() {
+    return Container(
+      width: 52,
+      height: 52,
+      color: dominantColor.withOpacity(0.5),
+      child: const Icon(
+        Icons.report_rounded,
+        color: secondaryColor,
+      ),
+    );
   }
 
   Widget referenceCard(dynamic msg) {
@@ -191,7 +267,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             borderRadius: BorderRadius.circular(10),
             child: media != null && media.toString().isNotEmpty
                 ? Image.network(
-                    media,
+                    media.toString(),
                     width: 52,
                     height: 52,
                     fit: BoxFit.cover,
@@ -243,24 +319,13 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     );
   }
 
-  Widget laporanPlaceholder() {
-    return Container(
-      width: 52,
-      height: 52,
-      color: dominantColor.withOpacity(0.5),
-      child: const Icon(
-        Icons.report_rounded,
-        color: secondaryColor,
-      ),
-    );
-  }
-
   Widget messageBubble(dynamic msg) {
     final int senderId = msg["sender_id"] is int
         ? msg["sender_id"]
         : int.tryParse(msg["sender_id"].toString()) ?? 0;
 
-    final bool isMe = senderId == widget.userId;
+    final bool isMe = senderId == widget.currentUserId;
+    final bool isRead = msg["is_read"] == true;
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -299,6 +364,34 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                 height: 1.35,
               ),
             ),
+            const SizedBox(height: 5),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment:
+                  isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+              children: [
+                Text(
+                  formatJam(msg["created_at"]),
+                  style: TextStyle(
+                    color: isMe
+                        ? Colors.white.withOpacity(0.65)
+                        : secondaryColor.withOpacity(0.45),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (isMe) ...[
+                  const SizedBox(width: 5),
+                  Icon(
+                    isRead ? Icons.done_all_rounded : Icons.done_rounded,
+                    size: 14,
+                    color: isRead
+                        ? Colors.lightBlueAccent
+                        : Colors.white.withOpacity(0.65),
+                  ),
+                ],
+              ],
+            ),
           ],
         ),
       ),
@@ -329,7 +422,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               ),
               const SizedBox(height: 6),
               Text(
-                "Kirim pesan pertama untuk memulai chat dengan admin.",
+                "Kirim pesan pertama untuk memulai chat.",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: secondaryColor.withOpacity(0.6),
@@ -400,7 +493,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: isSending ? secondaryColor.withOpacity(0.4) : accentColor,
+                  color:
+                      isSending ? secondaryColor.withOpacity(0.4) : accentColor,
                   shape: BoxShape.circle,
                 ),
                 child: isSending
@@ -424,6 +518,22 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     );
   }
 
+  String getAppBarTitle() {
+    if (widget.currentUserId == widget.adminId) {
+      return "Chat Pelapor";
+    }
+
+    return "Chat Admin";
+  }
+
+  String getAppBarSubtitle() {
+    if (widget.currentUserId == widget.adminId) {
+      return "Admin WadulGuse";
+    }
+
+    return "WadulGuse";
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -432,20 +542,20 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         backgroundColor: secondaryColor,
         elevation: 0,
         iconTheme: const IconThemeData(color: dominantColor),
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Chat Admin",
-              style: TextStyle(
+              getAppBarTitle(),
+              style: const TextStyle(
                 color: dominantColor,
                 fontSize: 17,
                 fontWeight: FontWeight.bold,
               ),
             ),
             Text(
-              "WadulGuse",
-              style: TextStyle(
+              getAppBarSubtitle(),
+              style: const TextStyle(
                 color: Colors.white70,
                 fontSize: 11,
               ),

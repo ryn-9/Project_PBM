@@ -218,8 +218,9 @@ class DetailLaporanPage extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (_) => ChatRoomPage(
+                    currentUserId: userId,
                     userId: userId,
-                    adminId: 1,
+                    adminId: 8,
                     referenceLaporanId: laporanId,
                   ),
                 ),
