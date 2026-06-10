@@ -231,16 +231,10 @@ Widget _cameraNavItem() {
         return _dashboardContent();
 
       case 1:
-        return LaporanPage(
-          key: ValueKey(capturedImagePathFromNavbar ?? "laporan-manual"),
-          userId: widget.userId,
-          initialImagePath: capturedImagePathFromNavbar,
-          onReportSubmitted: () {
-            setState(() {
-              capturedImagePathFromNavbar = null;
-            });
-          },
-        );
+        return LaporanUserPage(
+        userId: widget.userId,
+        token: widget.token,
+      );
 
       case 2:
         return const Center(
