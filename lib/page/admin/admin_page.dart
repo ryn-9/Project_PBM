@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:project_pbm/page/admin/laporan_admin_page.dart';
+import 'package:project_pbm/page/admin/chat_list_admin_page.dart';
 import 'package:project_pbm/page/profil_page.dart';
 import 'package:project_pbm/service/adminService.dart';
 import '../auth/login_page.dart';
@@ -22,9 +23,11 @@ class _AdminHomePageState extends State<AdminHomePage> {
 
   bool isLoadingUser = true;
 
-  static const Color dominantColor = Color(0xFFD8C99B); // Ecru
-  static const Color secondaryColor = Color(0xFF273E47); // Charcoal
-  static const Color accentColor = Color(0xFFD8973C); // Butterscotch
+  static const int adminId = 8; // sesuaikan dengan id admin di database
+
+  static const Color dominantColor = Color(0xFFD8C99B);
+  static const Color secondaryColor = Color(0xFF273E47);
+  static const Color accentColor = Color(0xFFD8973C);
   static const Color bgLight = Color(0xFFF5F0E8);
   static const Color cardBg = Color(0xFFFFFFFF);
 
@@ -71,6 +74,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
       case 1:
         return "Kelola Laporan";
       case 2:
+        return "Daftar Chat";
+      case 3:
         return "Profil Admin";
       default:
         return "Admin";
@@ -150,6 +155,10 @@ class _AdminHomePageState extends State<AdminHomePage> {
             label: "Laporan",
           ),
           BottomNavigationBarItem(
+            icon: Icon(Icons.chat_bubble_rounded),
+            label: "Chat",
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.person),
             label: "Profil",
           ),
@@ -165,6 +174,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
       case 1:
         return const LaporanAdminPage();
       case 2:
+        return const ChatListAdminPage(adminId: adminId);
+      case 3:
         return const ProfilePage();
       default:
         return const Center(child: Text("Error"));
@@ -182,7 +193,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
       future: AdminService.getStatistikAdmin(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          const LoadingWidget(
+          return const LoadingWidget(
             message: "Memuat Dashboard...",
           );
         }
@@ -220,54 +231,40 @@ class _AdminHomePageState extends State<AdminHomePage> {
             padding: const EdgeInsets.all(20),
             children: [
               _headerDashboard(),
-
               const SizedBox(height: 20),
-
               _bigSummaryCard(
                 title: "Total Laporan",
                 value: totalLaporan.toString(),
                 subtitle: "Seluruh laporan yang masuk ke sistem",
                 icon: Icons.assignment_rounded,
               ),
-
               const SizedBox(height: 16),
-
               _sectionLabel("RINGKASAN STATUS"),
-
               const SizedBox(height: 10),
-
               _statCard(
                 title: "Laporan Terkirim",
                 value: laporanTerkirim.toString(),
                 icon: Icons.send_rounded,
               ),
-
               const SizedBox(height: 12),
-
               _statCard(
                 title: "Laporan Telah Dibaca",
                 value: laporanTelahDibaca.toString(),
                 icon: Icons.mark_email_read_rounded,
               ),
-
               const SizedBox(height: 12),
-
               _statCard(
                 title: "Dalam Proses Tindak Lanjut",
                 value: dalamProses.toString(),
                 icon: Icons.sync_rounded,
               ),
-
               const SizedBox(height: 12),
-
               _statCard(
                 title: "Laporan Selesai Ditindaklanjuti",
                 value: laporanSelesai.toString(),
                 icon: Icons.check_circle_rounded,
               ),
-
               const SizedBox(height: 24),
-
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -350,9 +347,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
               ),
             ),
           ),
-
           const SizedBox(height: 12),
-
           Text(
             "Hai, $username 👋",
             style: const TextStyle(
@@ -362,9 +357,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
               letterSpacing: -0.5,
             ),
           ),
-
           const SizedBox(height: 4),
-
           Text(
             "Kelola dan tindak lanjuti laporan masyarakat secara terpusat.",
             style: TextStyle(
@@ -414,9 +407,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
               size: 30,
             ),
           ),
-
           const SizedBox(width: 16),
-
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -493,9 +484,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
               size: 22,
             ),
           ),
-
           const SizedBox(width: 14),
-
           Expanded(
             child: Text(
               title,
@@ -506,7 +495,6 @@ class _AdminHomePageState extends State<AdminHomePage> {
               ),
             ),
           ),
-
           Container(
             padding: const EdgeInsets.symmetric(
               horizontal: 12,
