@@ -110,6 +110,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
 
     chatChannel = Supabase.instance.client
         .channel("chat_room_$roomId")
+
+        // Pesan baru masuk
         .onPostgresChanges(
           event: PostgresChangeEvent.insert,
           schema: "public",
@@ -122,6 +124,45 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
           callback: (payload) async {
             await loadNewMessages();
             scrollToBottom();
+          },
+        )
+
+        // is_read berubah
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: "public",
+          table: "chat_messages",
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: "room_id",
+            value: roomId!,
+          ),
+          callback: (payload) {
+            final updatedMessage = payload.newRecord;
+
+            final int? updatedId = updatedMessage["id"] is int
+                ? updatedMessage["id"]
+                : int.tryParse(updatedMessage["id"].toString());
+
+            if (updatedId == null) return;
+            if (!mounted) return;
+
+            setState(() {
+              messages = messages.map((msg) {
+                final int? msgId = msg["id"] is int
+                    ? msg["id"]
+                    : int.tryParse(msg["id"].toString());
+
+                if (msgId == updatedId) {
+                  return {
+                    ...Map<String, dynamic>.from(msg),
+                    ...updatedMessage,
+                  };
+                }
+
+                return msg;
+              }).toList();
+            });
           },
         )
         .subscribe();

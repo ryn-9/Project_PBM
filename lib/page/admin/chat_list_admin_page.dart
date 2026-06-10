@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../service/chatService.dart';
 import '../user/chat_room_page.dart';
 
@@ -38,10 +40,21 @@ class _ChatListAdminPageState extends State<ChatListAdminPage> {
   bool _isLoading = true;
   String? _errorMessage;
 
+  RealtimeChannel? _realtimeChannel;
+
   @override
   void initState() {
     super.initState();
     _loadChatRooms();
+    _subscribeRealtime();
+  }
+
+  @override
+  void dispose() {
+    if (_realtimeChannel != null) {
+      Supabase.instance.client.removeChannel(_realtimeChannel!);
+    }
+    super.dispose();
   }
 
   Future<void> _loadChatRooms() async {
@@ -68,8 +81,39 @@ class _ChatListAdminPageState extends State<ChatListAdminPage> {
     }
   }
 
+  Future<void> _loadChatRoomsQuiet() async {
+    if (!mounted) return;
+
+    try {
+      final data = await ChatService.getChatRoomsByUser(widget.adminId);
+
+      if (!mounted) return;
+
+      setState(() {
+        _rooms = data;
+      });
+    } catch (e) {
+      debugPrint("Gagal refresh chat list: $e");
+    }
+  }
+
+  void _subscribeRealtime() {
+    _realtimeChannel = Supabase.instance.client
+        .channel("admin_chat_list_${widget.adminId}")
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: "public",
+          table: "chat_messages",
+          callback: (payload) {
+            _loadChatRoomsQuiet();
+          },
+        )
+        .subscribe();
+  }
+
   String _formatJam(dynamic rawDate) {
     if (rawDate == null || rawDate.toString().isEmpty) return "";
+
     try {
       final date = DateTime.parse(rawDate.toString()).toLocal();
       final now  = DateTime.now();
@@ -179,6 +223,7 @@ class _EmptyState extends StatelessWidget {
 
 class _ErrorState extends StatelessWidget {
   final String error;
+
   const _ErrorState({required this.error});
 
   @override
@@ -188,7 +233,11 @@ class _ErrorState extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       children: [
         const SizedBox(height: 100),
-        Icon(Icons.error_outline_rounded, size: 80, color: Colors.red.shade300),
+        Icon(
+          Icons.error_outline_rounded,
+          size: 80,
+          color: Colors.red.shade300,
+        ),
         const SizedBox(height: 16),
         const Center(
           child: Text(
@@ -274,6 +323,7 @@ class _ChatCard extends StatelessWidget {
               ),
             ),
           );
+
           onBack();
         },
         child: Padding(
@@ -281,7 +331,9 @@ class _ChatCard extends StatelessWidget {
           child: Row(
             children: [
               _Avatar(foto: fotoUser, nama: namaUser),
+
               const SizedBox(width: 12),
+
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,6 +348,7 @@ class _ChatCard extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+
                     if (emailUser.isNotEmpty) ...[
                       const SizedBox(height: 2),
                       Text(
@@ -309,7 +362,9 @@ class _ChatCard extends StatelessWidget {
                         ),
                       ),
                     ],
+
                     const SizedBox(height: 6),
+
                     Text(
                       lastMessage,
                       maxLines: 1,
@@ -327,7 +382,9 @@ class _ChatCard extends StatelessWidget {
                   ],
                 ),
               ),
+
               const SizedBox(width: 10),
+
               _ChatCardTrailing(unread: unread, lastAt: lastAt),
             ],
           ),
@@ -343,9 +400,10 @@ class _Avatar extends StatelessWidget {
   final dynamic foto;
   final String nama;
 
-  const _Avatar({required this.foto, required this.nama});
-
-  static const _radius = BorderRadius.all(Radius.circular(26));
+  const _Avatar({
+    required this.foto,
+    required this.nama,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -360,17 +418,20 @@ class _Avatar extends StatelessWidget {
         ),
       );
     }
+
     return _Placeholder(nama: nama);
   }
 }
 
 class _Placeholder extends StatelessWidget {
   final String nama;
+
   const _Placeholder({required this.nama});
 
   @override
   Widget build(BuildContext context) {
     final initial = nama.isNotEmpty ? nama[0].toUpperCase() : "?";
+
     return Container(
       width: 52,
       height: 52,
@@ -398,7 +459,10 @@ class _ChatCardTrailing extends StatelessWidget {
   final int unread;
   final String lastAt;
 
-  const _ChatCardTrailing({required this.unread, required this.lastAt});
+  const _ChatCardTrailing({
+    required this.unread,
+    required this.lastAt,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -418,10 +482,15 @@ class _ChatCardTrailing extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
+
         const SizedBox(height: 8),
+
         if (hasUnread)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 7,
+              vertical: 3,
+            ),
             decoration: const BoxDecoration(
               color: _ChatListAdminPageState.accentColor,
               shape: BoxShape.circle,
