@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../service/laporanService.dart';
 import 'tambah_laporan_page.dart';
-import 'edit_laporan_page.dart';
+import 'detail_laporan_page.dart';
 
 class LaporanUserPage extends StatefulWidget {
   final int userId;
@@ -259,7 +259,7 @@ class _LaporanUserPageState extends State<LaporanUserPage> {
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => EditLaporanPage(
+              builder: (_) => DetailLaporanPage(
                 userId: widget.userId,
                 laporan: Map<String, dynamic>.from(laporan),
               ),
@@ -353,30 +353,19 @@ class _LaporanUserPageState extends State<LaporanUserPage> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 9,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: getStatusColor(status.toString())
-                              .withOpacity(0.13),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          formatStatus(status.toString()),
-                          style: TextStyle(
-                            color: getStatusColor(status.toString()),
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      Text(
+                        "Lihat Selengkapnya",
+                        style: TextStyle(
+                          color: accentColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const Spacer(),
+                      const SizedBox(width: 4),
                       Icon(
-                        Icons.edit_note_rounded,
-                        color: secondaryColor.withOpacity(0.55),
-                        size: 20,
+                        Icons.arrow_forward_ios_rounded,
+                        color: accentColor,
+                        size: 12,
                       ),
                     ],
                   ),
