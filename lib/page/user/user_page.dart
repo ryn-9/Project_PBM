@@ -66,45 +66,6 @@ class _UserHomePageState extends State<UserHomePage> {
     });
   }
 
-  // String _getTitle() {
-  //   switch (currentIndex) {
-  //     case 0:
-  //       return "Beranda";
-  //     case 1:
-  //       return "Laporan";
-  //     case 2:
-  //       return "Kamera";
-  //     case 3:
-  //       return "Riwayat";
-  //     case 4:
-  //       return "Profil";
-  //     default:
-  //       return "Aplikasi";
-  //   }
-  // }
-
-  // Widget _buildBody() {
-  //   switch (currentIndex) {
-  //     case 0:
-  //       return _dashboardContent();
-  //     case 1:
-  //       return LaporanPage(userId: widget.userId);
-  //     case 2:
-  //       return const Center(
-  //         child: Text(
-  //           "Kamera",
-  //           style: TextStyle(color: secondaryColor),
-  //         ),
-  //       );
-  //     case 3:
-  //       return RiwayatUserPage(userId: widget.userId);
-  //     case 4:
-  //       return const ProfilePage();
-  //     default:
-  //       return const Center(child: Text("Error"));
-  //   }
-  // }
-
   @override
   Widget build(BuildContext context) {
     print("USER ID DI USER HOME PAGE: ${widget.userId}");
@@ -265,36 +226,42 @@ Widget _cameraNavItem() {
 }
 
   Widget _buildBody() {
-      switch (currentIndex) {
-        case 0:
-          return _dashboardContent();
-  
-     case 1:
-      return LaporanUserPage(
-        userId: widget.userId,
-        token: widget.token,
-      );
+    switch (currentIndex) {
+      case 0:
+        return _dashboardContent();
 
-        case 2:
-          return const Center(
+      case 1:
+        return LaporanPage(
+          key: ValueKey(capturedImagePathFromNavbar ?? "laporan-manual"),
+          userId: widget.userId,
+          initialImagePath: capturedImagePathFromNavbar,
+          onReportSubmitted: () {
+            setState(() {
+              capturedImagePathFromNavbar = null;
+            });
+          },
+        );
+
+      case 2:
+        return const Center(
           child: Text("Kamera"),
         );
-  
+
       case 3:
         print("USER ID DIKIRIM KE RIWAYAT: ${widget.userId}");
-          return RiwayatUserPage(
+        return RiwayatUserPage(
           userId: widget.userId,
         );
 
-        case 4:
-          return const ProfilePage();
-  
+      case 4:
+        return const ProfilePage();
+
       default:
-          return const Center(
+        return const Center(
           child: Text("Error"),
         );
-      }
     }
+  }
 
   String _getTitle() {
     switch (currentIndex) {
@@ -469,9 +436,7 @@ Widget _cameraNavItem() {
               status: status,
               tanggal: tanggal,
             ),
-
             _postImage(media),
-
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
               child: Row(
@@ -495,9 +460,7 @@ Widget _cameraNavItem() {
                       size: 24,
                     ),
                   ),
-
                   const SizedBox(width: 16),
-
                   GestureDetector(
                     onTap: () {
                       setState(() {
@@ -517,9 +480,7 @@ Widget _cameraNavItem() {
                       size: 24,
                     ),
                   ),
-
                   const SizedBox(width: 16),
-
                   GestureDetector(
                     onTap: () {
                       showKomentarBottomSheet(laporan);
@@ -530,17 +491,13 @@ Widget _cameraNavItem() {
                       size: 24,
                     ),
                   ),
-
                   const SizedBox(width: 16),
-
                   const Icon(
                     Icons.location_on_outlined,
                     color: secondaryColor,
                     size: 24,
                   ),
-
                   const Spacer(),
-
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -562,7 +519,6 @@ Widget _cameraNavItem() {
                 ],
               ),
             ),
-
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
               child: Text(
@@ -574,7 +530,6 @@ Widget _cameraNavItem() {
                 ),
               ),
             ),
-
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
               child: RichText(
@@ -596,7 +551,6 @@ Widget _cameraNavItem() {
                 ),
               ),
             ),
-
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
               child: Row(
@@ -623,7 +577,6 @@ Widget _cameraNavItem() {
                 ],
               ),
             ),
-
             if (catatanAdmin.isNotEmpty && catatanAdmin != "null")
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
@@ -661,7 +614,6 @@ Widget _cameraNavItem() {
                   ),
                 ),
               ),
-
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
               child: GestureDetector(
@@ -710,9 +662,7 @@ Widget _cameraNavItem() {
                   )
                 : null,
           ),
-
           const SizedBox(width: 10),
-
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -739,7 +689,6 @@ Widget _cameraNavItem() {
               ],
             ),
           ),
-
           Icon(
             Icons.more_horiz_rounded,
             color: secondaryColor.withOpacity(0.65),
@@ -844,9 +793,7 @@ Widget _cameraNavItem() {
                     borderRadius: BorderRadius.circular(20),
                   ),
                 ),
-
                 const SizedBox(height: 16),
-
                 const Text(
                   "Komentar",
                   style: TextStyle(
@@ -855,9 +802,7 @@ Widget _cameraNavItem() {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-
                 const SizedBox(height: 12),
-
                 Expanded(
                   child: ListView(
                     children: [
@@ -872,9 +817,7 @@ Widget _cameraNavItem() {
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
                 Row(
                   children: [
                     Expanded(
@@ -911,9 +854,7 @@ Widget _cameraNavItem() {
                         ),
                       ),
                     ),
-
                     const SizedBox(width: 8),
-
                     GestureDetector(
                       onTap: () {
                         final text = commentController.text.trim();
@@ -974,9 +915,7 @@ Widget _cameraNavItem() {
               size: 18,
             ),
           ),
-
           const SizedBox(width: 10),
-
           Expanded(
             child: RichText(
               text: TextSpan(
@@ -1091,7 +1030,6 @@ Widget _cameraNavItem() {
                     ),
                   ),
                 ),
-
                 const Text(
                   "Komentar",
                   style: TextStyle(
@@ -1099,9 +1037,7 @@ Widget _cameraNavItem() {
                     fontSize: 18,
                   ),
                 ),
-
                 const Divider(),
-
                 Expanded(
                   child: ListView(
                     children: const [
@@ -1118,7 +1054,6 @@ Widget _cameraNavItem() {
                     ],
                   ),
                 ),
-
                 Padding(
                   padding: const EdgeInsets.all(8),
                   child: Row(

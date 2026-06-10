@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:project_pbm/service/adminService.dart';
 import 'package:project_pbm/widget/loading_widget.dart';
@@ -57,6 +59,38 @@ class _DetailLaporanAdminPageState extends State<DetailLaporanAdminPage> {
     final id = widget.laporan["id"];
     if (id is int) return id;
     return int.tryParse(id.toString()) ?? 0;
+  }
+
+  int get userIdPelapor {
+    final id = widget.laporan["user_id"] ??
+        widget.laporan["userId"] ??
+        widget.laporan["id_user"];
+
+    if (id is int) return id;
+    return int.tryParse(id.toString()) ?? 0;
+  }
+
+  Future<void> kirimNotifikasiStatus() async {
+    if (userIdPelapor == 0) return;
+
+    final response = await http.post(
+      Uri.parse("https://wadulguse-api.vercel.app/api/notifikasi/send"),
+      headers: {
+        "Content-Type": "application/json",
+        "accept": "*/*",
+      },
+      body: jsonEncode({
+        "target_user_id": userIdPelapor,
+        "judul": "Status Laporan Diperbarui",
+        "pesan":
+            'Laporan "${getJudul()}" telah diperbarui menjadi ${getStatusLabel(selectedStatus)}',
+        "laporan_id": laporanId,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception("Gagal mengirim notifikasi");
+    }
   }
 
   String normalizeStatus(String status) {
@@ -202,6 +236,8 @@ class _DetailLaporanAdminPageState extends State<DetailLaporanAdminPage> {
         status: selectedStatus,
         catatan: catatanController.text.trim(),
       );
+
+      await kirimNotifikasiStatus();
 
       if (!mounted) return;
 
@@ -607,9 +643,7 @@ class _DetailLaporanAdminPageState extends State<DetailLaporanAdminPage> {
                     _statusBadge(),
                   ],
                 ),
-
                 const SizedBox(height: 4),
-
                 Text(
                   "Status saat ini: ${getStatusLabel(selectedStatus)}",
                   style: TextStyle(
@@ -617,15 +651,10 @@ class _DetailLaporanAdminPageState extends State<DetailLaporanAdminPage> {
                     fontSize: 12,
                   ),
                 ),
-
                 const SizedBox(height: 16),
-
                 _imageSection(),
-
                 const SizedBox(height: 20),
-
                 _sectionLabel("Detail Laporan"),
-
                 Text(
                   getDeskripsi(),
                   style: const TextStyle(
@@ -634,17 +663,11 @@ class _DetailLaporanAdminPageState extends State<DetailLaporanAdminPage> {
                     height: 1.45,
                   ),
                 ),
-
                 const SizedBox(height: 22),
-
                 _sectionLabel("Informasi Pelapor"),
-
                 _infoCard(),
-
                 const SizedBox(height: 22),
-
                 _sectionLabel("Lokasi Laporan"),
-
                 Text(
                   getAlamat(),
                   style: TextStyle(
@@ -652,25 +675,15 @@ class _DetailLaporanAdminPageState extends State<DetailLaporanAdminPage> {
                     fontSize: 13,
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
                 _mapSection(),
-
                 const SizedBox(height: 22),
-
                 _sectionLabel("Ubah Status Laporan"),
-
                 _statusDropdown(),
-
                 const SizedBox(height: 16),
-
                 _sectionLabel("Tambahkan Catatan"),
-
                 _catatanField(),
-
                 const SizedBox(height: 24),
-
                 SizedBox(
                   width: double.infinity,
                   height: 52,
@@ -692,7 +705,6 @@ class _DetailLaporanAdminPageState extends State<DetailLaporanAdminPage> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 24),
               ],
             ),
