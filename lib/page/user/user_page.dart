@@ -1162,6 +1162,8 @@ class _KomentarBottomSheetState extends State<KomentarBottomSheet> {
   bool isLoading = true;
   bool isSending = false;
 
+  int? editingKomentarId;
+
   List<dynamic> komentarList = [];
 
   @override
@@ -1208,11 +1210,19 @@ class _KomentarBottomSheetState extends State<KomentarBottomSheet> {
     }
   }
 
-  Future<void> tambahKomentar() async {
+  Future<void> submitKomentar() async {
     final text = commentController.text.trim();
 
     if (text.isEmpty || isSending) return;
 
+    if (editingKomentarId == null) {
+      await tambahKomentar(text);
+    } else {
+      await simpanEditKomentar(text);
+    }
+  }
+
+  Future<void> tambahKomentar(String text) async {
     setState(() {
       isSending = true;
     });
@@ -1228,7 +1238,10 @@ class _KomentarBottomSheetState extends State<KomentarBottomSheet> {
       commentController.clear();
 
       setState(() {
-        komentarList.add(newKomentar);
+        komentarList.add({
+          ...newKomentar,
+          "user_id": widget.userId,
+        });
       });
 
       await loadKomentar();
@@ -1250,63 +1263,43 @@ class _KomentarBottomSheetState extends State<KomentarBottomSheet> {
     }
   }
 
-  Future<void> editKomentar(dynamic komentar) async {
+  void mulaiEditKomentar(dynamic komentar) {
     final int komentarId = toInt(komentar["id"]);
+    final String isi = getIsiKomentar(komentar);
 
-    final String komentarLama = komentar["komentar"]?.toString() ??
-        komentar["isi_komentar"]?.toString() ??
-        komentar["isi"]?.toString() ??
-        "";
+    setState(() {
+      editingKomentarId = komentarId;
+      commentController.text = isi;
+      commentController.selection = TextSelection.fromPosition(
+        TextPosition(offset: commentController.text.length),
+      );
+    });
+  }
 
-    final TextEditingController editController =
-        TextEditingController(text: komentarLama);
+  void batalEditKomentar() {
+    setState(() {
+      editingKomentarId = null;
+      commentController.clear();
+    });
+  }
 
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: widget.cardBg,
-          title: const Text("Edit Komentar"),
-          content: TextField(
-            controller: editController,
-            maxLines: 4,
-            decoration: const InputDecoration(
-              hintText: "Tulis komentar...",
-              border: OutlineInputBorder(),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text("Batal"),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context, editController.text.trim());
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: widget.accentColor,
-                foregroundColor: widget.secondaryColor,
-              ),
-              child: const Text("Simpan"),
-            ),
-          ],
-        );
-      },
-    );
+  Future<void> simpanEditKomentar(String text) async {
+    final int komentarId = editingKomentarId ?? 0;
 
-    editController.dispose();
+    if (komentarId == 0) return;
 
-    if (result == null || result.isEmpty) return;
+    setState(() {
+      isSending = true;
+    });
 
     try {
       final updatedKomentar = await KomentarService.editKomentar(
         komentarId: komentarId,
-        komentar: result,
+        komentar: text,
         token: widget.token,
       );
+
+      if (!mounted) return;
 
       setState(() {
         final index = komentarList.indexWhere(
@@ -1314,12 +1307,19 @@ class _KomentarBottomSheetState extends State<KomentarBottomSheet> {
         );
 
         if (index != -1) {
+          final oldData = Map<String, dynamic>.from(komentarList[index]);
+
           komentarList[index] = {
-            ...Map<String, dynamic>.from(komentarList[index]),
+            ...oldData,
             ...updatedKomentar,
-            "komentar": result,
+            "id": komentarId,
+            "komentar": text,
+            "updated": DateTime.now().toIso8601String(),
           };
         }
+
+        editingKomentarId = null;
+        commentController.clear();
       });
     } catch (e) {
       if (!mounted) return;
@@ -1330,41 +1330,19 @@ class _KomentarBottomSheetState extends State<KomentarBottomSheet> {
           behavior: SnackBarBehavior.floating,
         ),
       );
+    } finally {
+      if (mounted) {
+        setState(() {
+          isSending = false;
+        });
+      }
     }
   }
 
   Future<void> hapusKomentar(dynamic komentar) async {
     final int komentarId = toInt(komentar["id"]);
 
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Hapus Komentar"),
-          content: const Text("Yakin ingin menghapus komentar ini?"),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context, false);
-              },
-              child: const Text("Batal"),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context, true);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text("Hapus"),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirm != true) return;
+    if (komentarId == 0 || isSending) return;
 
     try {
       await KomentarService.hapusKomentar(
@@ -1372,10 +1350,17 @@ class _KomentarBottomSheetState extends State<KomentarBottomSheet> {
         token: widget.token,
       );
 
+      if (!mounted) return;
+
       setState(() {
         komentarList.removeWhere(
           (item) => toInt(item["id"]) == komentarId,
         );
+
+        if (editingKomentarId == komentarId) {
+          editingKomentarId = null;
+          commentController.clear();
+        }
       });
     } catch (e) {
       if (!mounted) return;
@@ -1399,8 +1384,9 @@ class _KomentarBottomSheetState extends State<KomentarBottomSheet> {
 
   String getNamaKomentator(dynamic komentar) {
     return komentar["nama"]?.toString() ??
-        komentar["nama_user"]?.toString() ??
+        komentar["fullname"]?.toString() ??
         komentar["username"]?.toString() ??
+        komentar["nama_user"]?.toString() ??
         komentar["nama_pelapor"]?.toString() ??
         komentar["user"]?["nama"]?.toString() ??
         "User ${komentar["user_id"] ?? ""}";
@@ -1453,8 +1439,9 @@ class _KomentarBottomSheetState extends State<KomentarBottomSheet> {
         children: [
           CircleAvatar(
             radius: 18,
-            backgroundColor:
-                isMine ? widget.accentColor.withOpacity(0.2) : widget.dominantColor,
+            backgroundColor: isMine
+                ? widget.accentColor.withOpacity(0.2)
+                : widget.dominantColor,
             backgroundImage:
                 foto.isNotEmpty && foto != "null" ? NetworkImage(foto) : null,
             child: foto.isEmpty || foto == "null"
@@ -1493,32 +1480,29 @@ class _KomentarBottomSheetState extends State<KomentarBottomSheet> {
                           ),
                         ),
                       ),
-                      if (isMine)
-                        PopupMenuButton<String>(
-                          padding: EdgeInsets.zero,
-                          icon: Icon(
-                            Icons.more_vert_rounded,
-                            size: 18,
-                            color: widget.secondaryColor,
-                          ),
-                          onSelected: (value) {
-                            if (value == "edit") {
-                              editKomentar(komentar);
-                            } else if (value == "hapus") {
-                              hapusKomentar(komentar);
-                            }
+                      if (isMine) ...[
+                        GestureDetector(
+                          onTap: () {
+                            mulaiEditKomentar(komentar);
                           },
-                          itemBuilder: (context) => const [
-                            PopupMenuItem(
-                              value: "edit",
-                              child: Text("Edit"),
-                            ),
-                            PopupMenuItem(
-                              value: "hapus",
-                              child: Text("Hapus"),
-                            ),
-                          ],
+                          child: Icon(
+                            Icons.edit_rounded,
+                            size: 18,
+                            color: widget.accentColor,
+                          ),
                         ),
+                        const SizedBox(width: 10),
+                        GestureDetector(
+                          onTap: () {
+                            hapusKomentar(komentar);
+                          },
+                          child: const Icon(
+                            Icons.delete_rounded,
+                            size: 18,
+                            color: Colors.red,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 3),
@@ -1583,70 +1567,124 @@ class _KomentarBottomSheetState extends State<KomentarBottomSheet> {
   }
 
   Widget inputKomentar() {
-    return Row(
+    final bool isEditing = editingKomentarId != null;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Expanded(
-          child: TextField(
-            controller: commentController,
-            minLines: 1,
-            maxLines: 4,
-            decoration: InputDecoration(
-              hintText: "Tulis komentar...",
-              hintStyle: TextStyle(
-                color: widget.secondaryColor.withOpacity(0.4),
-              ),
-              filled: true,
-              fillColor: widget.bgLight,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 12,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(22),
-                borderSide: BorderSide.none,
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(22),
-                borderSide: BorderSide(
-                  color: widget.dominantColor.withOpacity(0.6),
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(22),
-                borderSide: BorderSide(
-                  color: widget.accentColor,
-                  width: 1.4,
-                ),
-              ),
+        if (isEditing)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 8,
             ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        GestureDetector(
-          onTap: isSending ? null : tambahKomentar,
-          child: Container(
-            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: isSending
-                  ? widget.secondaryColor.withOpacity(0.35)
-                  : widget.accentColor,
-              shape: BoxShape.circle,
+              color: widget.accentColor.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: widget.accentColor.withOpacity(0.4),
+              ),
             ),
-            child: isSending
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
+            child: Row(
+              children: [
+                Icon(
+                  Icons.edit_rounded,
+                  size: 16,
+                  color: widget.accentColor,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    "Sedang mengedit komentar",
+                    style: TextStyle(
+                      color: widget.secondaryColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
                     ),
-                  )
-                : Icon(
-                    Icons.send_rounded,
-                    color: widget.secondaryColor,
-                    size: 20,
                   ),
+                ),
+                GestureDetector(
+                  onTap: batalEditKomentar,
+                  child: const Icon(
+                    Icons.close_rounded,
+                    size: 18,
+                    color: Colors.red,
+                  ),
+                ),
+              ],
+            ),
           ),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: commentController,
+                minLines: 1,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  hintText:
+                      isEditing ? "Edit komentar..." : "Tulis komentar...",
+                  hintStyle: TextStyle(
+                    color: widget.secondaryColor.withOpacity(0.4),
+                  ),
+                  filled: true,
+                  fillColor: widget.bgLight,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(22),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(22),
+                    borderSide: BorderSide(
+                      color: widget.dominantColor.withOpacity(0.6),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(22),
+                    borderSide: BorderSide(
+                      color: widget.accentColor,
+                      width: 1.4,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: isSending ? null : submitKomentar,
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isSending
+                      ? widget.secondaryColor.withOpacity(0.35)
+                      : widget.accentColor,
+                  shape: BoxShape.circle,
+                ),
+                child: isSending
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Icon(
+                        isEditing
+                            ? Icons.check_rounded
+                            : Icons.send_rounded,
+                        color: widget.secondaryColor,
+                        size: 20,
+                      ),
+              ),
+            ),
+          ],
         ),
       ],
     );
