@@ -5,14 +5,36 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 import '../config/api_config.dart';
 
 class AuthService {
+  static Future<String?> getFcmToken() async {
+    try {
+      await FirebaseMessaging.instance.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      final token = await FirebaseMessaging.instance.getToken();
+
+      print("FCM TOKEN GENERATED: $token");
+
+      return token;
+    } catch (e) {
+      print("Gagal mengambil FCM token: $e");
+      return null;
+    }
+  }
+
   static Future<Map<String, dynamic>> login({
     required String email,
     required String password,
   }) async {
+    final fcmToken = await getFcmToken();
+
     final response = await http.post(
       Uri.parse("${ApiConfig.baseUrl}/auth/login"),
       headers: {
@@ -22,19 +44,36 @@ class AuthService {
       body: jsonEncode({
         "email": email,
         "password": password,
+        "fcm_token": fcmToken,
       }),
     );
+
+    print("========== LOGIN DEBUG ==========");
+    print("LOGIN URL: ${ApiConfig.baseUrl}/auth/login");
+    print("LOGIN STATUS: ${response.statusCode}");
+    print("LOGIN BODY: ${response.body}");
+    print("FCM TOKEN SENT: $fcmToken");
+    print("=================================");
 
     final data = jsonDecode(response.body);
 
     if (response.statusCode == 200) {
       final prefs = await SharedPreferences.getInstance();
 
-      await prefs.setString("token", data["token"] ?? "");
-      await prefs.setString("role", data["role"] ?? "user");
+      await prefs.setString("token", data["token"]?.toString() ?? "");
+      await prefs.setString("role", data["role"]?.toString() ?? "user");
 
-      // optional, boleh disimpan juga kalau API login ngasih nama
-      // await prefs.setString("nama", data["nama"] ?? "");
+      if (data["user"] != null) {
+        await prefs.setString("nama", data["user"]["nama"]?.toString() ?? "");
+        await prefs.setString("email", data["user"]["email"]?.toString() ?? "");
+      } else {
+        await prefs.setString("nama", data["nama"]?.toString() ?? "");
+        await prefs.setString("email", data["email"]?.toString() ?? "");
+      }
+
+      if (fcmToken != null && fcmToken.isNotEmpty) {
+        await prefs.setString("fcm_token", fcmToken);
+      }
 
       return data;
     } else {
@@ -48,6 +87,8 @@ class AuthService {
     required String password,
     required String noHp,
   }) async {
+    final fcmToken = await getFcmToken();
+
     final response = await http.post(
       Uri.parse("${ApiConfig.baseUrl}/auth/register"),
       headers: {
@@ -59,8 +100,16 @@ class AuthService {
         "email": email,
         "password": password,
         "no_hp": noHp,
+        "fcm_token": fcmToken,
       }),
     );
+
+    print("========== REGISTER DEBUG ==========");
+    print("REGISTER URL: ${ApiConfig.baseUrl}/auth/register");
+    print("REGISTER STATUS: ${response.statusCode}");
+    print("REGISTER BODY: ${response.body}");
+    print("FCM TOKEN SENT: $fcmToken");
+    print("====================================");
 
     final data = jsonDecode(response.body);
 
@@ -114,6 +163,11 @@ class AuthService {
   static Future<String?> getNama() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString("nama");
+  }
+
+  static Future<String?> getSavedFcmToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString("fcm_token");
   }
 
   static Future<Map<String, dynamic>> uploadProfilePhoto(String imagePath) async {

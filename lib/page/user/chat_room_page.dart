@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../service/chatService.dart';
+import '../../service/active_chat_service.dart';
 
 class ChatRoomPage extends StatefulWidget {
   final int currentUserId;
@@ -48,7 +49,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   int? roomId;
   List<dynamic> messages = [];
   int? _lastMessageId;
-  final Set<int> _localMessageIds = {}; // Cegah duplikasi pesan dari realtime
+  final Set<int> _localMessageIds = {};
 
   RealtimeChannel? chatChannel;
 
@@ -60,6 +61,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
 
   @override
   void dispose() {
+    ActiveChatService.activeRoomId = null;
     if (chatChannel != null) {
       Supabase.instance.client.removeChannel(chatChannel!);
     }
@@ -75,7 +77,13 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         adminId: widget.adminId,
       );
 
-      roomId = room["id"];
+      roomId = room["id"] is int
+      ? room["id"]
+      : int.tryParse(room["id"].toString());
+
+ActiveChatService.activeRoomId = roomId;
+
+      ActiveChatService.activeRoomId = roomId;
 
       await loadMessages();
       shouldSendReference =

@@ -5,6 +5,7 @@ import 'register_page.dart';
 import '../user/user_page.dart';
 import '../admin/admin_page.dart';
 import '../../service/authService.dart';
+import '../../service/fcm_chat_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -84,6 +85,8 @@ class _LoginPageState extends State<LoginPage> {
 
       final int userId =
           rawUserId is int ? rawUserId : int.parse(rawUserId.toString());
+      
+      await FcmChatService.init();
 
       final String role = tokenPayload["role"]?.toString() ??
           data["role"]?.toString() ??
