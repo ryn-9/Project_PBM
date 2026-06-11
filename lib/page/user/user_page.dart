@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'laporan_user_page.dart';
 import 'camera_capture_page.dart';
+import 'laporan_page.dart';
 
 class UserHomePage extends StatefulWidget {
   final int userId;
@@ -25,8 +26,6 @@ class UserHomePage extends StatefulWidget {
 
 class _UserHomePageState extends State<UserHomePage> {
   int currentIndex = 0;
-
-  String? capturedImagePathFromNavbar;
 
   static const Color dominantColor = Color(0xFFD8C99B);
   static const Color secondaryColor = Color(0xFF273E47);
@@ -52,17 +51,29 @@ class _UserHomePageState extends State<UserHomePage> {
     final imagePath = await Navigator.push<String>(
       context,
       MaterialPageRoute(
-        builder: (context) => CameraCapturePage(),
+        builder: (context) => const CameraCapturePage(),
       ),
     );
 
     if (!mounted) return;
 
     if (imagePath != null && imagePath.isNotEmpty) {
-      setState(() {
-        capturedImagePathFromNavbar = imagePath;
-        currentIndex = 1;
-      });
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => LaporanPage(
+            userId: widget.userId,
+            initialImagePath: imagePath,
+            onReportSubmitted: () {
+              refreshPublicLaporan();
+            },
+          ),
+        ),
+      );
+
+      if (!mounted) return;
+
+      refreshPublicLaporan();
     }
   }
 

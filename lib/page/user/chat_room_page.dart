@@ -81,8 +81,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       ? room["id"]
       : int.tryParse(room["id"].toString());
 
-ActiveChatService.activeRoomId = roomId;
-
       ActiveChatService.activeRoomId = roomId;
 
       await loadMessages();
